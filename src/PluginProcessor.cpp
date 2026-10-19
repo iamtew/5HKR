@@ -262,13 +262,16 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     snapSlot (currentBank(), currentPattern(), slot);
 
     float swing[hkr::numLanes];
+    float tune[hkr::numLanes];
     uint8_t enabled = 0;
     for (int i = 0; i < hkr::numLanes; ++i)
     {
         swing[i] = raw (ParamID::laneSwing[i]);
+        tune[i] = raw (ParamID::laneTune[i]);
         if (raw (ParamID::laneOn[i]) >= 0.5f)
             enabled = (uint8_t) (enabled | (1u << i));
     }
+    voices.setTune (tune);
 
     hkr::Hit hits[64];
     const int n = out.getNumSamples();

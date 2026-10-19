@@ -2,6 +2,7 @@
 
 #include "Sequencer.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -34,6 +35,13 @@ struct Voices
         ph2[lane] = 0.f;
     }
 
+    // Semitones. 0 = 12 o'clock.
+    void setTune (const float semi[numLanes])
+    {
+        for (int i = 0; i < numLanes; ++i)
+            tune[i] = semi[i];
+    }
+
     float process()
     {
         float mix = 0.f;
@@ -55,9 +63,15 @@ private:
         return (float) ((int) (rng >> 16) - 32768) * (1.f / 32768.f);
     }
 
+    float ratio (int lane) const
+    {
+        return std::pow (2.f, tune[lane] / 12.f);
+    }
+
     float noiseHit (int lane, float decay, float hp)
     {
         env[lane] *= decay;
+        hp = std::clamp (hp * ratio (lane), 0.02f, 0.9f);
         const float n = noise();
         lp[lane] += hp * (n - lp[lane]);
         return (n - lp[lane]) * env[lane] * 0.35f;
@@ -66,6 +80,7 @@ private:
     float sineHit (int lane, float hz, float decay, float gain)
     {
         env[lane] *= decay;
+        hz *= ratio (lane);
         ph[lane] += (float) (2.0 * 3.141592653589793 * (double) hz / sr);
         if (ph[lane] > 6.2831853f)
             ph[lane] -= 6.2831853f;
@@ -76,16 +91,18 @@ private:
     {
         env[cowbell] *= 0.993f;
         const float e = env[cowbell];
-        ph[cowbell] += (float) (2.0 * 3.141592653589793 * 540.0 / sr);
-        ph2[cowbell] += (float) (2.0 * 3.141592653589793 * 800.0 / sr);
+        const float r = ratio (cowbell);
+        ph[cowbell] += (float) (2.0 * 3.141592653589793 * 540.0 * (double) r / sr);
+        ph2[cowbell] += (float) (2.0 * 3.141592653589793 * 800.0 * (double) r / sr);
         return (std::sin (ph[cowbell]) + 0.7f * std::sin (ph2[cowbell])) * e * 0.22f;
     }
 
     float rimHit()
     {
         env[rim] *= 0.985f;
+        const float r = ratio (rim);
         const float click = env[rim] * env[rim] * noise() * 0.25f;
-        ph[rim] += (float) (2.0 * 3.141592653589793 * 380.0 / sr);
+        ph[rim] += (float) (2.0 * 3.141592653589793 * 380.0 * (double) r / sr);
         return std::sin (ph[rim]) * env[rim] * 0.28f + click;
     }
 
@@ -96,6 +113,7 @@ private:
     float ph[numLanes] {};
     float ph2[numLanes] {};
     float lp[numLanes] {};
+    float tune[numLanes] {};
 };
 
 struct Ducker

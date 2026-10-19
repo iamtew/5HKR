@@ -58,6 +58,7 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         ParameterID { ParamID::scMix, 1 }, "SC Mix", unit, 1.f, pct (unit)));
 
     auto swingR = NormalisableRange<float> (0.5f, 0.75f, 0.001f);
+    auto tuneR = NormalisableRange<float> (-12.f, 12.f, 0.01f);
     for (int i = 0; i < hkr::numLanes; ++i)
     {
         layout.add (std::make_unique<AudioParameterBool> (
@@ -66,6 +67,9 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         layout.add (std::make_unique<AudioParameterFloat> (
             ParameterID { ParamID::laneSwing[i], 1 },
             String (hkr::laneNames[i]) + " Swing", swingR, 0.5f));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneTune[i], 1 },
+            String (hkr::laneNames[i]) + " Tune", tuneR, 0.f));
     }
 
     return layout;

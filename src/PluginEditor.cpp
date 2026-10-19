@@ -67,6 +67,12 @@ HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln
     swingAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         ed.proc.apvts, ParamID::laneSwing[ln], swing);
     addAndMakeVisible (swing);
+
+    tune.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+    tune.setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
+    tuneAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        ed.proc.apvts, ParamID::laneTune[ln], tune);
+    addAndMakeVisible (tune);
 }
 
 void HKR5AudioProcessorEditor::LaneRow::resized()
@@ -74,6 +80,7 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
     auto r = getLocalBounds();
     onBtn.setBounds (r.removeFromLeft (56).reduced (1));
     swing.setBounds (r.removeFromLeft (40).reduced (1));
+    tune.setBounds (r.removeFromLeft (40).reduced (1));
     const int cellW = juce::jmax (1, r.getWidth() / 16);
     for (int i = 0; i < 16; ++i)
         cells[i] = { r.getX() + i * cellW, r.getY() + 4, cellW - 2, r.getHeight() - 8 };
