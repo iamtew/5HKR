@@ -50,6 +50,7 @@ public:
     void setStep (int lane, int index, int value);
     int cycleStep (int lane, int index);
     void setLoop (int lane, int length);
+    void toggleLoopEnd (int lane, int stepIndex);
     void setPatLen (int length);
 
     hkr::OutputMeter& outputMeter() { return meter; }

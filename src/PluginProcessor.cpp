@@ -182,14 +182,35 @@ void HKR5AudioProcessor::setLoop (int lane, int length)
 {
     if (lane < 0 || lane >= hkr::numLanes)
         return;
+    const int len = hkr::clampLen ((int) currentSlot().len);
     slotLoop[currentBank()][currentPattern()][lane].store (
-        (uint8_t) juce::jlimit (1, hkr::SlotData::maxSteps, length), std::memory_order_relaxed);
+        (uint8_t) juce::jlimit (1, len, length), std::memory_order_relaxed);
+}
+
+void HKR5AudioProcessor::toggleLoopEnd (int lane, int stepIndex)
+{
+    const auto s = currentSlot();
+    const int len = hkr::clampLen ((int) s.len);
+    if (lane < 0 || lane >= hkr::numLanes || stepIndex < 0 || stepIndex >= len)
+        return;
+    const int end = stepIndex + 1;
+    const int cur = juce::jlimit (1, len, (int) s.loop[lane]);
+    setLoop (lane, cur == end ? len : end);
 }
 
 void HKR5AudioProcessor::setPatLen (int length)
 {
-    slotLen[currentBank()][currentPattern()].store (
-        (uint8_t) hkr::clampLen (length), std::memory_order_relaxed);
+    hkr::SlotData s = currentSlot();
+    hkr::setPatternLen (s, length);
+    const int b = currentBank();
+    const int p = currentPattern();
+    slotLen[b][p].store (s.len, std::memory_order_relaxed);
+    for (int lane = 0; lane < hkr::numLanes; ++lane)
+    {
+        slotLoop[b][p][lane].store (s.loop[lane], std::memory_order_relaxed);
+        for (int w = 0; w < hkr::SlotData::wordsPerLane; ++w)
+            slotWords[b][p][lane][w].store (s.words[lane][w], std::memory_order_relaxed);
+    }
 }
 
 bool HKR5AudioProcessor::handleKeyTriggers (const juce::MidiBuffer& midi)

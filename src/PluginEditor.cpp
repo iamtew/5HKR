@@ -67,18 +67,6 @@ HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln
     swingAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         ed.proc.apvts, ParamID::laneSwing[ln], swing);
     addAndMakeVisible (swing);
-
-    loop.setSliderStyle (juce::Slider::LinearHorizontal);
-    loop.setTextBoxStyle (juce::Slider::TextBoxRight, false, 28, 14);
-    loop.setRange (1.0, (double) hkr::SlotData::maxSteps, 1.0);
-    loop.setColour (juce::Slider::textBoxTextColourId, kWhite);
-    loop.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
-    loop.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    loop.onValueChange = [this]
-    {
-        editor.proc.setLoop (lane, (int) loop.getValue());
-    };
-    addAndMakeVisible (loop);
 }
 
 void HKR5AudioProcessorEditor::LaneRow::resized()
@@ -86,7 +74,6 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
     auto r = getLocalBounds();
     onBtn.setBounds (r.removeFromLeft (56).reduced (1));
     swing.setBounds (r.removeFromLeft (40).reduced (1));
-    loop.setBounds (r.removeFromLeft (88).reduced (2, 8));
     const int cellW = juce::jmax (1, r.getWidth() / 16);
     for (int i = 0; i < 16; ++i)
         cells[i] = { r.getX() + i * cellW, r.getY() + 4, cellW - 2, r.getHeight() - 8 };
@@ -104,12 +91,17 @@ void HKR5AudioProcessorEditor::LaneRow::paint (juce::Graphics& g)
         else
             g.setColour (kDark.brighter (0.08f));
         g.fillRoundedRectangle (c, 3.f);
+        if (loopCell == i)
+        {
+            g.setColour (kMagenta);
+            g.drawRoundedRectangle (c.reduced (0.5f), 3.f, 2.f);
+        }
         if (play == i)
         {
             g.setColour (kWhite);
             g.drawRoundedRectangle (c, 3.f, 1.5f);
         }
-        else if ((i % 4) == 0)
+        else if (loopCell != i && (i % 4) == 0)
         {
             g.setColour (kWhite.withAlpha (0.25f));
             g.drawRoundedRectangle (c, 3.f, 1.f);
@@ -124,22 +116,29 @@ void HKR5AudioProcessorEditor::LaneRow::mouseDown (const juce::MouseEvent& e)
         if (! cells[i].contains (e.getPosition()))
             continue;
         const int idx = editor.stepPage * 16 + i;
-        values[i] = editor.proc.cycleStep (lane, idx);
-        repaint();
+        if (e.mods.isPopupMenu())
+            editor.proc.toggleLoopEnd (lane, idx);
+        else
+            values[i] = editor.proc.cycleStep (lane, idx);
+        editor.refreshGrid();
         return;
     }
 }
 
 void HKR5AudioProcessorEditor::LaneRow::refresh (const hkr::SlotData& slot, int playhead, int page)
 {
-    loop.setValue ((double) slot.loop[lane], juce::dontSendNotification);
     play = -1;
+    loopCell = -1;
     const int base = page * 16;
     for (int i = 0; i < 16; ++i)
         values[i] = hkr::getStep (slot, lane, base + i);
+    const int lp = juce::jlimit (1, (int) slot.len, (int) slot.loop[lane]);
+    const int endIdx = lp - 1;
+    if (endIdx >= base && endIdx < base + 16)
+        loopCell = endIdx - base;
     if (playhead >= 0)
     {
-        const int ls = hkr::laneStep (playhead, std::max (1, (int) slot.loop[lane]));
+        const int ls = hkr::laneStep (playhead, lp);
         if (ls >= base && ls < base + 16)
             play = ls - base;
     }

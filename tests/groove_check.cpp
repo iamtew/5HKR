@@ -27,6 +27,22 @@ int main()
     setStep (s, chh, 63, 2);
     assert (getStep (s, chh, 63) == 2);
 
+    SlotData grow;
+    setStep (grow, chh, 0, 2);
+    setStep (grow, chh, 4, 1);
+    grow.len = 16;
+    setPatternLen (grow, 32);
+    assert (grow.len == 32);
+    assert (getStep (grow, chh, 16) == 2);
+    assert (getStep (grow, chh, 20) == 1);
+    setPatternLen (grow, 64);
+    assert (grow.len == 64);
+    assert (getStep (grow, chh, 48) == 2);
+    grow.loop[chh] = 5;
+    setPatternLen (grow, 16);
+    assert (grow.len == 16);
+    assert (grow.loop[chh] == 5);
+
     assert (laneStep (16, 5) == 1);
     assert (laneStep (0, 7) == 0);
     assert (laneStep (7, 7) == 0);

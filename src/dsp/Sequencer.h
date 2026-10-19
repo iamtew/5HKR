@@ -83,6 +83,25 @@ inline void setStep (SlotData& s, int lane, int i, int v)
     s.words[lane][w] = (s.words[lane][w] & ~mask) | (((uint32_t) (v & 3)) << sh);
 }
 
+// Grow 16→32/64 by tiling the current length so extra bars are not empty.
+inline void setPatternLen (SlotData& s, int newLen)
+{
+    const int old = clampLen ((int) s.len);
+    newLen = clampLen (newLen);
+    if (newLen > old)
+        for (int lane = 0; lane < numLanes; ++lane)
+            for (int i = old; i < newLen; ++i)
+                setStep (s, lane, i, getStep (s, lane, i % old));
+    for (int lane = 0; lane < numLanes; ++lane)
+    {
+        int lp = std::max (1, (int) s.loop[lane]);
+        if (lp == old || lp > newLen)
+            lp = newLen;
+        s.loop[lane] = (uint8_t) lp;
+    }
+    s.len = (uint8_t) newLen;
+}
+
 inline void fillFactory (SlotData& s, int bank, int pat)
 {
     s = SlotData();

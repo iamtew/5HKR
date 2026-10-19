@@ -108,10 +108,10 @@ private:
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> onAtt;
         juce::Slider swing;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> swingAtt;
-        juce::Slider loop;
         juce::Rectangle<int> cells[16];
         int values[16] {};
         int play = -1;
+        int loopCell = -1;
     };
 
     struct AboutBox : public juce::Component
