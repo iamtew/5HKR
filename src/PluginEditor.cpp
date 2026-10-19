@@ -62,25 +62,46 @@ HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln
         ed.proc.apvts, ParamID::laneOn[ln], onBtn);
     addAndMakeVisible (onBtn);
 
-    swing.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    swing.setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
-    swingAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
-        ed.proc.apvts, ParamID::laneSwing[ln], swing);
-    addAndMakeVisible (swing);
-
-    tune.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    tune.setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
+    auto setupKnob = [this] (juce::Slider& s, juce::Label& lab)
+    {
+        s.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+        s.setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
+        addAndMakeVisible (s);
+        lab.setJustificationType (juce::Justification::centred);
+        lab.setColour (juce::Label::textColourId, kCyan);
+        lab.setFont (boldFont (9.f));
+        addAndMakeVisible (lab);
+    };
+    setupKnob (tune, tuneLabel);
+    setupKnob (swing, swingLabel);
     tuneAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         ed.proc.apvts, ParamID::laneTune[ln], tune);
-    addAndMakeVisible (tune);
+    swingAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        ed.proc.apvts, ParamID::laneSwing[ln], swing);
+    tune.onValueChange = [this] { refreshKnobLabels(); };
+    swing.onValueChange = [this] { refreshKnobLabels(); };
+    refreshKnobLabels();
+}
+
+void HKR5AudioProcessorEditor::LaneRow::refreshKnobLabels()
+{
+    const float st = (float) tune.getValue();
+    tuneLabel.setText ("Tune " + juce::String (st, 1), juce::dontSendNotification);
+    swingLabel.setText ("Swing " + juce::String (juce::roundToInt ((float) swing.getValue() * 100.f)) + "%",
+                        juce::dontSendNotification);
 }
 
 void HKR5AudioProcessorEditor::LaneRow::resized()
 {
     auto r = getLocalBounds();
     onBtn.setBounds (r.removeFromLeft (56).reduced (1));
-    swing.setBounds (r.removeFromLeft (40).reduced (1));
-    tune.setBounds (r.removeFromLeft (40).reduced (1));
+    auto place = [] (juce::Slider& s, juce::Label& lab, juce::Rectangle<int> col)
+    {
+        lab.setBounds (col.removeFromBottom (12));
+        s.setBounds (col.reduced (1));
+    };
+    place (tune, tuneLabel, r.removeFromLeft (52));
+    place (swing, swingLabel, r.removeFromLeft (52));
     const int cellW = juce::jmax (1, r.getWidth() / 16);
     for (int i = 0; i < 16; ++i)
         cells[i] = { r.getX() + i * cellW, r.getY() + 4, cellW - 2, r.getHeight() - 8 };
@@ -149,6 +170,7 @@ void HKR5AudioProcessorEditor::LaneRow::refresh (const hkr::SlotData& slot, int 
         if (ls >= base && ls < base + 16)
             play = ls - base;
     }
+    refreshKnobLabels();
     repaint();
 }
 

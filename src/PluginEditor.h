@@ -101,14 +101,17 @@ private:
         void paint (juce::Graphics& g) override;
         void mouseDown (const juce::MouseEvent& e) override;
         void refresh (const hkr::SlotData& slot, int playhead, int page);
+        void refreshKnobLabels();
 
         HKR5AudioProcessorEditor& editor;
         int lane = 0;
         juce::ToggleButton onBtn;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> onAtt;
         juce::Slider swing;
+        juce::Label swingLabel;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> swingAtt;
         juce::Slider tune;
+        juce::Label tuneLabel;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> tuneAtt;
         juce::Rectangle<int> cells[16];
         int values[16] {};
