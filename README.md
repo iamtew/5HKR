@@ -10,4 +10,4 @@ VST3 and standalone. Stupid Systems LLC. [MIT](LICENSE). Docs: [iamtew.github.io
 
 ## Release
 
-`just build-dist` writes `dist/5HKR-<version>-win-x64-vst3.zip`, `dist/5HKR-<version>-win-x64-standalone.zip`, and `dist/5HKR-<version>-win-x64.msi`. Defaults are `Common Files\VST3` and `Program Files\Stupid Systems LLC\5HKR`. Building the MSI needs the .NET 8 SDK.
+`just build-dist` writes `dist/5HKR-<version>-win-x64-vst3.zip`, `dist/5HKR-<version>-win-x64-standalone.zip`, and `dist/5HKR-<version>-win-x64.msi`. Defaults are `Common Files\VST3` and `Program Files\Stupid Systems LLC\5HKR`. Building the MSI needs the .NET 8 SDK. Do not run the `dist` MSI from this OneDrive tree (msiexec 1620). `just build-msi` copies it to `%LOCALAPPDATA%\5HKR\` and selects that file in Explorer. After it is installed, later `dist` double-clicks use the Windows cache like TEW03/K1X/V4JB.
