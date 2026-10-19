@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>5HKR — perc groove box</title>
+  <style>
+    :root {
+      --chassis: #1a2332;
+      --magenta: #ff00ff;
+      --cyan: #00ffff;
+      --white: #ffffff;
+      --dark: #000000;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.45 system-ui, sans-serif;
+      background: var(--chassis);
+      color: var(--white);
+    }
+    a { color: var(--cyan); }
+    header, main, footer { max-width: 56rem; margin: 0 auto; padding: 1.5rem; }
+    header { display: flex; gap: 1rem; align-items: center; }
+    header img { width: 72px; height: 72px; }
+    h1 { margin: 0; color: var(--magenta); font-size: 2rem; }
+    .sub { color: var(--cyan); }
+    img.shot { width: 100%; height: auto; border: 1px solid var(--magenta); border-radius: 6px; }
+    h2 { color: var(--cyan); font-size: 1.1rem; margin-top: 2rem; }
+    .dl { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .dl a {
+      display: inline-block;
+      padding: 0.5rem 0.9rem;
+      border: 1px solid var(--cyan);
+      border-radius: 4px;
+      text-decoration: none;
+    }
+    ul { padding-left: 1.2rem; }
+    footer { color: #c8d6e5; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="img/logo.png" alt="5HKR">
+    <div>
+      <h1>5HKR</h1>
+      <div class="sub">Shaker · v0.0.1 · Stupid Systems LLC · MIT</div>
+    </div>
+  </header>
+  <main>
+    <p>Perc groove box: eight synth lanes on a 16th-note grid, pattern banks, per-lane swing and loop length, and a sidechain duck. Not a sample player.</p>
+    <img class="shot" src="img/main.png" alt="5HKR main page: eight lanes and step grid">
+
+    <h2>Install</h2>
+    <p>Windows x64. MSI defaults: VST3 in <code>Common Files\VST3</code>, standalone in <code>Program Files\Stupid Systems LLC\5HKR</code>.</p>
+    <p class="dl">
+      <a href="https://github.com/iamtew/5HKR/releases">Releases</a>
+      <a href="https://github.com/iamtew/5HKR">Source</a>
+    </p>
+    <p>Zips on a release: <code>5HKR-*-win-x64-vst3.zip</code>, <code>5HKR-*-win-x64-standalone.zip</code>, and <code>5HKR-*-win-x64.msi</code>.</p>
+
+    <h2>Grid</h2>
+    <ul>
+      <li>Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. Mute with the lane name.</li>
+      <li>Click a cell: off → on (cyan) → accent (magenta).</li>
+      <li>Right-click a cell to set that lane’s loop end (magenta outline).</li>
+      <li>Tune ±12 st and swing 50–75% per lane.</li>
+      <li>Length 1 / 2 / 4 bars (16 / 32 / 64 sixteenths). Step pager when longer than one bar.</li>
+    </ul>
+
+    <h2>Pages and library</h2>
+    <p>Title bar arrows cycle Main and Sidechain. Click the 5HKR title for About.</p>
+    <p>Patch bar: <code>.5hkrp</code> knobs. Bank bar: <code>.5hkrb</code> patterns. Init / Save / Save As / Export / Import from the bar menu.</p>
+    <img class="shot" src="img/sidechain.png" alt="5HKR sidechain page">
+
+    <h2>MIDI</h2>
+    <p>Hold C1 for bank 1 pattern 1 (Ableton C0). The groove runs while the key is held. Three banks × 12 patterns from MIDI note 24. VST3 follows host BPM.</p>
+
+    <h2>Sidechain</h2>
+    <p>Ducks the lanes from the plugin audio input. Thresh, Amount, Attack, Release, Mix. Enable with the Sidechain toggle.</p>
+    <img class="shot" src="img/about.png" alt="5HKR about dialog">
+  </main>
+  <footer>Stupid Systems LLC · <a href="https://github.com/iamtew/5HKR/blob/master/LICENSE">MIT</a></footer>
+</body>
+</html>
