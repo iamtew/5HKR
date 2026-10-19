@@ -33,6 +33,6 @@ Hold C1 for bank 1 pattern 1 (Ableton C0). C2 is bank 2 pattern 1. Mapping start
 
 ## Sidechain
 
-Ducks the mixed lanes from the plugin audio input (standalone mutes that input to avoid feedback). **Sidechain** toggle, then Thresh, Amount, Attack, Release, Mix.
+Ducks the mixed lanes from the plugin audio input. **Sidechain** is off until you turn it on. **HP** / **LP** isolate the part of the input the ducker follows. **Listen** puts that filtered key on the output so you can hear it (standalone can feed back if a live mic is the input). Then Thresh, Amount, Attack, Release, Mix.
 
 Drag the window corner to scale; the scale is saved with the session.

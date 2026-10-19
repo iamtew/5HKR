@@ -92,6 +92,7 @@ private:
     hkr::Sequencer sequencer;
     hkr::Voices voices;
     hkr::Ducker ducker;
+    hkr::ScFilter scFiltL, scFiltR;
     hkr::OutputMeter meter;
 
     std::atomic<uint8_t> slotLen[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank] {};

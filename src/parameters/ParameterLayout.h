@@ -44,6 +44,14 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 
     layout.add (std::make_unique<AudioParameterBool> (
         ParameterID { ParamID::scOn, 1 }, "SC On", false));
+    layout.add (std::make_unique<AudioParameterBool> (
+        ParameterID { ParamID::scListen, 1 }, "SC Listen", false));
+    auto hpR = NormalisableRange<float> (20.f, 2000.f, 0.1f, 0.4f);
+    auto lpR = NormalisableRange<float> (200.f, 20000.f, 1.f, 0.4f);
+    layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { ParamID::scHp, 1 }, "SC HP", hpR, 20.f));
+    layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { ParamID::scLp, 1 }, "SC LP", lpR, 20000.f));
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamID::scThresh, 1 }, "SC Thresh", unit, 0.25f, pct (unit)));
     layout.add (std::make_unique<AudioParameterFloat> (

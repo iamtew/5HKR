@@ -1,13 +1,13 @@
 # Architecture
 
-PluginProcessor owns APVTS, Sequencer, Voices, Ducker, and atomics for every bank slot.
+PluginProcessor owns APVTS, Sequencer, Voices, Ducker, ScFilter (L/R), and atomics for every bank slot.
 
 Audio thread:
 
 1. MIDI note-on in C1–range selects a slot; the groove runs while that key is held
 2. Sequencer::advance emits Hits (lane, accent, sample offset) using host BPM in VST3, else seqTempo
 3. Voices::trigger then Voices::process mix the eight synth hits
-4. Volume, then optional Ducker from the input bus, then OutputMeter
+4. Volume, then optional HP/LP on the input bus into Ducker; Listen replaces the output with that filtered key, then OutputMeter
 
 Message thread:
 

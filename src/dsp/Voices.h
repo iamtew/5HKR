@@ -141,4 +141,36 @@ private:
     float env = 0.f;
 };
 
+// One-pole HP then LP on the sidechain key. ponytail: 6 dB/oct; SVF if a kick still leaks hats.
+struct ScFilter
+{
+    void prepare (double sampleRate)
+    {
+        sr = sampleRate > 1.0 ? sampleRate : 44100.0;
+        lp = 0.f;
+        hpLp = 0.f;
+    }
+
+    float process (float x, float hpHz, float lpHz)
+    {
+        const float hpC = coeff (hpHz);
+        hpLp += hpC * (x - hpLp);
+        const float hp = x - hpLp;
+        const float lpC = coeff (lpHz);
+        lp += lpC * (hp - lp);
+        return lp;
+    }
+
+private:
+    float coeff (float hz) const
+    {
+        const float f = std::clamp (hz, 1.f, (float) (sr * 0.45));
+        return 1.f - std::exp (-6.2831853f * f / (float) sr);
+    }
+
+    double sr = 44100.0;
+    float lp = 0.f;
+    float hpLp = 0.f;
+};
+
 } // namespace hkr

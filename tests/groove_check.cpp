@@ -1,4 +1,5 @@
 #include "dsp/Sequencer.h"
+#include "dsp/Voices.h"
 #include "parameters/Library.h"
 
 #include <cassert>
@@ -88,6 +89,47 @@ int main()
     assert (back[1][0].loop[clave] == 5);
     assert (getStep (back[1][0], clave, 4) == 2);
     assert (getStep (back[0][0], chh, 0) == getStep (slots[0][0], chh, 0));
+
+    {
+        ScFilter f;
+        f.prepare (44100.0);
+        float loRms = 0.f, hiRms = 0.f;
+        const float wLo = 2.f * 3.14159265f * 100.f / 44100.f;
+        const float wHi = 2.f * 3.14159265f * 8000.f / 44100.f;
+        for (int i = 0; i < 44100; ++i)
+        {
+            const float lo = f.process (std::sin (wLo * (float) i), 20.f, 400.f);
+            loRms += lo * lo;
+        }
+        f.prepare (44100.0);
+        for (int i = 0; i < 44100; ++i)
+        {
+            const float hi = f.process (std::sin (wHi * (float) i), 20.f, 400.f);
+            hiRms += hi * hi;
+        }
+        loRms = std::sqrt (loRms / 44100.f);
+        hiRms = std::sqrt (hiRms / 44100.f);
+        assert (loRms > 0.4f);
+        assert (hiRms < 0.05f);
+
+        f.prepare (44100.0);
+        loRms = hiRms = 0.f;
+        for (int i = 0; i < 44100; ++i)
+        {
+            const float lo = f.process (std::sin (wLo * (float) i), 2000.f, 20000.f);
+            loRms += lo * lo;
+        }
+        f.prepare (44100.0);
+        for (int i = 0; i < 44100; ++i)
+        {
+            const float hi = f.process (std::sin (wHi * (float) i), 2000.f, 20000.f);
+            hiRms += hi * hi;
+        }
+        loRms = std::sqrt (loRms / 44100.f);
+        hiRms = std::sqrt (hiRms / 44100.f);
+        assert (hiRms > 0.4f);
+        assert (loRms < 0.05f);
+    }
 
     std::puts ("groove_check ok");
     return 0;

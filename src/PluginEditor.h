@@ -137,7 +137,8 @@ private:
     juce::OwnedArray<LaneRow> rows;
     juce::OwnedArray<Knob> scKnobs;
     juce::ToggleButton scOn { "Sidechain" };
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> scOnAtt;
+    juce::ToggleButton scListen { "Listen" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> scOnAtt, scListenAtt;
     juce::TextButton pageLeft { "<" }, pageRight { ">" };
     juce::Label pageLabel;
     AboutBox aboutBox;

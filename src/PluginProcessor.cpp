@@ -106,6 +106,8 @@ void HKR5AudioProcessor::prepareToPlay (double sampleRate, int)
     sequencer.prepare (sampleRate);
     voices.prepare (sampleRate);
     ducker.prepare (sampleRate);
+    scFiltL.prepare (sampleRate);
+    scFiltR.prepare (sampleRate);
 }
 
 bool HKR5AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -282,12 +284,17 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     float* r = out.getNumChannels() > 1 ? out.getWritePointer (1) : nullptr;
 
     const float vol = raw (ParamID::volume);
-    const bool scOn = raw (ParamID::scOn) >= 0.5f && scL != nullptr;
+    const bool haveSc = scL != nullptr;
+    const bool scOn = raw (ParamID::scOn) >= 0.5f && haveSc;
+    const bool scListen = raw (ParamID::scListen) >= 0.5f && haveSc;
+    const bool scKey = scOn || scListen;
     const float thr = raw (ParamID::scThresh);
     const float amt = raw (ParamID::scAmount);
     const float atk = raw (ParamID::scAttack);
     const float rel = raw (ParamID::scRelease);
     const float mix = raw (ParamID::scMix);
+    const float hpHz = raw (ParamID::scHp);
+    const float lpHz = raw (ParamID::scLp);
 
     for (int i = 0; i < n; ++i)
     {
@@ -295,15 +302,30 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             if (hits[h].offset == i)
                 voices.trigger (hits[h].lane, hits[h].accent);
         float s = voices.process() * vol;
+        float fL = 0.f, fR = 0.f;
+        if (scKey)
+        {
+            fL = scFiltL.process (scL[i], hpHz, lpHz);
+            fR = scFiltR.process (scR[i], hpHz, lpHz);
+        }
         if (scOn)
         {
-            const float scAbs = 0.5f * (std::abs (scL[i]) + std::abs (scR[i]));
+            const float scAbs = 0.5f * (std::abs (fL) + std::abs (fR));
             const float g = ducker.gain (scAbs, thr, amt, atk, rel);
             s *= (1.f - mix) + mix * g;
         }
-        l[i] = s;
-        if (r != nullptr)
-            r[i] = s;
+        if (scListen)
+        {
+            l[i] = fL;
+            if (r != nullptr)
+                r[i] = fR;
+        }
+        else
+        {
+            l[i] = s;
+            if (r != nullptr)
+                r[i] = s;
+        }
     }
 
     meter.push (out);

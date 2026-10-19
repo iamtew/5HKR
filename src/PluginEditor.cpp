@@ -479,9 +479,13 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
 
     scOnAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         proc.apvts, ParamID::scOn, scOn);
+    scListenAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        proc.apvts, ParamID::scListen, scListen);
     content.addAndMakeVisible (scOn);
+    content.addAndMakeVisible (scListen);
     struct Spec { const char* id; const char* name; };
     static constexpr Spec kSc[] = {
+        { ParamID::scHp, "HP" }, { ParamID::scLp, "LP" },
         { ParamID::scThresh, "Thresh" }, { ParamID::scAmount, "Amount" },
         { ParamID::scAttack, "Attack" }, { ParamID::scRelease, "Release" },
         { ParamID::scMix, "Mix" }
@@ -570,7 +574,9 @@ void HKR5AudioProcessorEditor::layoutContent()
     pageRight.setBounds (tools.removeFromLeft (28).reduced (2, 2));
 
     auto sc = r;
-    scOn.setBounds (sc.removeFromTop (28).removeFromLeft (110));
+    auto scToggles = sc.removeFromTop (28);
+    scOn.setBounds (scToggles.removeFromLeft (110));
+    scListen.setBounds (scToggles.removeFromLeft (90));
     const int kw = juce::jmax (1, sc.getWidth() / juce::jmax (1, scKnobs.size()));
     for (int i = 0; i < scKnobs.size(); ++i)
         scKnobs[i]->setBounds (sc.getX() + i * kw, sc.getY(), kw, juce::jmin (140, sc.getHeight()));
@@ -638,6 +644,7 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     for (auto* row : rows)
         row->setVisible (main);
     scOn.setVisible (! main);
+    scListen.setVisible (! main);
     for (auto* k : scKnobs)
         k->setVisible (! main);
 }

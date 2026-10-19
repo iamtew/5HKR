@@ -10,6 +10,9 @@ constexpr const char* seqBank    = "seqBank";
 constexpr const char* seqPattern = "seqPattern";
 
 constexpr const char* scOn     = "scOn";
+constexpr const char* scListen = "scListen";
+constexpr const char* scHp     = "scHp";
+constexpr const char* scLp     = "scLp";
 constexpr const char* scThresh = "scThresh";
 constexpr const char* scAmount = "scAmount";
 constexpr const char* scAttack = "scAttack";
