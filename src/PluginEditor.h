@@ -148,6 +148,7 @@ private:
     juce::ToggleButton scListen { "Listen" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> scOnAtt, scListenAtt;
     juce::TextButton pageLeft { "<" }, pageRight { ">" };
+    juce::TextButton randomBtn { "Random" }, clearBtn { "Clear" };
     juce::Label pageLabel;
     AboutBox aboutBox;
     int editorPage = 0;

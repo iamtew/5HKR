@@ -481,6 +481,18 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
     pageLabel.setJustificationType (juce::Justification::centred);
     pageLabel.setColour (juce::Label::textColourId, kCyan);
     content.addAndMakeVisible (pageLabel);
+    randomBtn.onClick = [this]
+    {
+        proc.randomizePattern();
+        refreshGrid();
+    };
+    clearBtn.onClick = [this]
+    {
+        proc.clearPattern();
+        refreshGrid();
+    };
+    content.addAndMakeVisible (randomBtn);
+    content.addAndMakeVisible (clearBtn);
 
     for (int i = 0; i < hkr::numLanes; ++i)
     {
@@ -588,6 +600,8 @@ void HKR5AudioProcessorEditor::layoutContent()
     pageLeft.setBounds (tools.removeFromLeft (28).reduced (2, 2));
     pageLabel.setBounds (tools.removeFromLeft (72));
     pageRight.setBounds (tools.removeFromLeft (28).reduced (2, 2));
+    randomBtn.setBounds (tools.removeFromLeft (72).reduced (2, 2));
+    clearBtn.setBounds (tools.removeFromLeft (72).reduced (2, 2));
 
     auto sc = r;
     auto scToggles = sc.removeFromTop (28);
@@ -665,6 +679,8 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     pageLeft.setVisible (main);
     pageRight.setVisible (main);
     pageLabel.setVisible (main);
+    randomBtn.setVisible (main);
+    clearBtn.setVisible (main);
     for (auto* row : rows)
         row->setVisible (main);
     scOn.setVisible (sc);

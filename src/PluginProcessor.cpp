@@ -232,6 +232,28 @@ void HKR5AudioProcessor::setPatLen (int length)
     }
 }
 
+void HKR5AudioProcessor::clearPattern()
+{
+    hkr::SlotData s = currentSlot();
+    hkr::clearPatternSteps (s);
+    const int b = currentBank();
+    const int p = currentPattern();
+    for (int lane = 0; lane < hkr::numLanes; ++lane)
+        for (int w = 0; w < hkr::SlotData::wordsPerLane; ++w)
+            slotWords[b][p][lane][w].store (s.words[lane][w], std::memory_order_relaxed);
+}
+
+void HKR5AudioProcessor::randomizePattern()
+{
+    hkr::SlotData s = currentSlot();
+    hkr::randomizePatternSteps (s, (uint32_t) juce::Random::getSystemRandom().nextInt());
+    const int b = currentBank();
+    const int p = currentPattern();
+    for (int lane = 0; lane < hkr::numLanes; ++lane)
+        for (int w = 0; w < hkr::SlotData::wordsPerLane; ++w)
+            slotWords[b][p][lane][w].store (s.words[lane][w], std::memory_order_relaxed);
+}
+
 bool HKR5AudioProcessor::handleKeyTriggers (const juce::MidiBuffer& midi)
 {
     int held = heldKey.load (std::memory_order_relaxed);

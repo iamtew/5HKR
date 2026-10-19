@@ -56,6 +56,8 @@ public:
     void setLoop (int lane, int length);
     void toggleLoopEnd (int lane, int stepIndex);
     void setPatLen (int length);
+    void clearPattern();
+    void randomizePattern();
 
     hkr::OutputMeter& outputMeter() { return meter; }
     hkr::EqAnalyser& eqAnalyser() { return analyser; }

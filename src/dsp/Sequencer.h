@@ -102,6 +102,29 @@ inline void setPatternLen (SlotData& s, int newLen)
     s.len = (uint8_t) newLen;
 }
 
+// Zero steps in the audible length. Loop ends and leftover bars past len stay.
+inline void clearPatternSteps (SlotData& s)
+{
+    const int n = clampLen ((int) s.len);
+    for (int lane = 0; lane < numLanes; ++lane)
+        for (int i = 0; i < n; ++i)
+            setStep (s, lane, i, 0);
+}
+
+// ~55% off, ~35% on, ~10% accent. LCG so tests can pin a seed.
+inline void randomizePatternSteps (SlotData& s, uint32_t seed)
+{
+    const int n = clampLen ((int) s.len);
+    uint32_t x = seed ? seed : 1u;
+    for (int lane = 0; lane < numLanes; ++lane)
+        for (int i = 0; i < n; ++i)
+        {
+            x = x * 1664525u + 1013904223u;
+            const int r = (int) (x % 100u);
+            setStep (s, lane, i, r < 10 ? 2 : (r < 45 ? 1 : 0));
+        }
+}
+
 // Factory grooves, one per slot. Edit the grids directly: each string is
 // exactly 16 steps, '.' off, 'x' on, 'X' accent. Lane order is
 // CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim.

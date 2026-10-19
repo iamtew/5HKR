@@ -19,6 +19,7 @@ Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that v
 - **Tune** ±12 st, **Swing** 50–75%, and **FX** 0–100% per lane (how much of that lane goes into the effects chain).
 - **Bank** / **Pat** — 3 banks × 12 patterns.
 - **1 / 2 / 4 bar** — 16 / 32 / 64 sixteenths. Extra bars tile the current length. Use the step pager when longer than one bar.
+- **Random** / **Clear** — fill or wipe every step of the current pattern. Loops, length, and knobs stay.
 
 ## Factory banks
 

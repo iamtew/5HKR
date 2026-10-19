@@ -47,6 +47,37 @@ int main()
     assert (grow.len == 16);
     assert (grow.loop[chh] == 5);
 
+    SlotData wipe;
+    wipe.len = 16;
+    wipe.loop[chh] = 7;
+    setStep (wipe, chh, 0, 2);
+    setStep (wipe, chh, 15, 1);
+    setStep (wipe, chh, 16, 2); // leftover past len
+    clearPatternSteps (wipe);
+    assert (getStep (wipe, chh, 0) == 0);
+    assert (getStep (wipe, chh, 15) == 0);
+    assert (getStep (wipe, chh, 16) == 2);
+    assert (wipe.loop[chh] == 7);
+    assert (wipe.len == 16);
+
+    SlotData rndA, rndB;
+    rndA.len = 16;
+    rndB.len = 16;
+    randomizePatternSteps (rndA, 1u);
+    randomizePatternSteps (rndB, 2u);
+    int nOn = 0;
+    bool rndSame = true;
+    for (int lane = 0; lane < numLanes; ++lane)
+        for (int i = 0; i < 16; ++i)
+        {
+            if (getStep (rndA, lane, i) > 0)
+                ++nOn;
+            if (getStep (rndA, lane, i) != getStep (rndB, lane, i))
+                rndSame = false;
+        }
+    assert (nOn > 0);
+    assert (! rndSame);
+
     assert (laneStep (16, 5) == 1);
     assert (laneStep (0, 7) == 0);
     assert (laneStep (7, 7) == 0);
