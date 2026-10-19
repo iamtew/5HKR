@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT name="5HKR" companyName="Stupid Systems LLC" version="0.0.1"
+              userNotes="Percussion groove box." projectType="audioplug" pluginAUIsSandboxSafe="1"
+              pluginManufacturer="Stupid Systems LLC" pluginManufacturerCode="Ssys"
+              pluginCode="Shkr" cppLanguageStandard="17" pluginFormats="buildVST3,buildStandalone"
+              pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn"
+              useAppConfig="0" addUsingNamespaceToJuceHeader="1" id="hkr5prj"
+              jucerFormatVersion="1">
+  <MAINGROUP id="hkrMain" name="5HKR">
+    <FILE id="logoPng1" name="logo.png" compile="0" resource="1" file="assets/logo.png"/>
+    <GROUP id="srcGrp1" name="src">
+      <FILE id="procH01" name="PluginProcessor.h" compile="0" resource="0"
+            file="src/PluginProcessor.h"/>
+      <FILE id="procC01" name="PluginProcessor.cpp" compile="1" resource="0"
+            file="src/PluginProcessor.cpp"/>
+      <FILE id="editH01" name="PluginEditor.h" compile="0" resource="0" file="src/PluginEditor.h"/>
+      <FILE id="editC01" name="PluginEditor.cpp" compile="1" resource="0"
+            file="src/PluginEditor.cpp"/>
+      <GROUP id="dspGrp01" name="dsp">
+        <FILE id="seqH001" name="Sequencer.h" compile="0" resource="0" file="src/dsp/Sequencer.h"/>
+        <FILE id="voiH001" name="Voices.h" compile="0" resource="0" file="src/dsp/Voices.h"/>
+        <FILE id="mtrH001" name="Meter.h" compile="0" resource="0" file="src/dsp/Meter.h"/>
+      </GROUP>
+      <GROUP id="prmGrp01" name="parameters">
+        <FILE id="pidH001" name="ParameterIDs.h" compile="0" resource="0" file="src/parameters/ParameterIDs.h"/>
+        <FILE id="plyH001" name="ParameterLayout.h" compile="0" resource="0"
+              file="src/parameters/ParameterLayout.h"/>
+        <FILE id="libH001" name="Library.h" compile="0" resource="0" file="src/parameters/Library.h"/>
+      </GROUP>
+    </GROUP>
+  </MAINGROUP>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="0"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_processors_headless" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="0"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+  </MODULES>
+  <EXPORTFORMATS>
+    <VS2022 targetFolder="Builds/VisualStudio2022" bigIcon="logoPng1" smallIcon="logoPng1">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" isDebug="1" optimisation="1" targetName="5HKR"/>
+        <CONFIGURATION name="Release" isDebug="0" optimisation="3" targetName="5HKR"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_audio_devices" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_audio_formats" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_audio_processors" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_audio_processors_headless" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_audio_utils" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_core" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_data_structures" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_events" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_graphics" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_gui_basics" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_gui_extra" path="C:\Users\Mikael\JUCE\modules"/>
+      </MODULEPATHS>
+    </VS2022>
+  </EXPORTFORMATS>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_WEB_BROWSER="0" JUCE_USE_CURL="0"
+               JUCE_VST3_CAN_REPLACE_VST2="0"/>
+</JUCERPROJECT>

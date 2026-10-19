@@ -1,0 +1,6 @@
+<Project>
+  <!-- OneDrive locks Builds\...\*.tlog and MSB3374 fires when MSBuild stamps lastbuildstate. -->
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.vcxproj'">
+    <TLogLocation>$(LOCALAPPDATA)\5HKR\tlog\$(Platform)\$(Configuration)\$(MSBuildProjectName)\</TLogLocation>
+  </PropertyGroup>
+</Project>

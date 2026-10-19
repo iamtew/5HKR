@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UpgradeCode stays fixed so a newer MSI replaces this install. -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="5HKR"
+           Manufacturer="Stupid Systems LLC"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="A19C4E70-8B2F-4D11-9E56-3C7A1B0D4F28"
+           Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of 5HKR is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <Icon Id="HkrIcon" SourceFile="!(bindpath.Icon)icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="HkrIcon" />
+
+    <ui:WixUI Id="WixUI_FeatureTree" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="CompanyFolder" Name="Stupid Systems LLC">
+        <Directory Id="INSTALLFOLDER" Name="5HKR">
+          <Component Id="Standalone" Guid="*">
+            <File Id="StandaloneExe" Name="5HKR.exe" Source="!(bindpath.Standalone)5HKR.exe" KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ProgramMenuDir" Name="5HKR">
+        <Component Id="StartMenuShortcut" Guid="*">
+          <Shortcut Id="StartMenu"
+                    Directory="ProgramMenuDir"
+                    Name="5HKR"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Icon="HkrIcon"
+                    Target="[INSTALLFOLDER]5HKR.exe" />
+          <RemoveFolder Id="RemoveProgramMenuDir" On="uninstall" />
+          <RegistryValue Root="HKCU"
+                         Key="Software\Stupid Systems LLC\5HKR"
+                         Name="installed"
+                         Type="integer"
+                         Value="1"
+                         KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonFiles6432Folder">
+      <Directory Id="VST3DIR" Name="VST3">
+        <Directory Id="Vst3Bundle" Name="5HKR.vst3" />
+      </Directory>
+    </StandardDirectory>
+
+    <ComponentGroup Id="Vst3Files" Directory="Vst3Bundle">
+      <Files Include="!(bindpath.Vst3)**" />
+    </ComponentGroup>
+
+    <Feature Id="Vst3Feature" Title="VST3" Level="1" ConfigurableDirectory="VST3DIR"
+             Description="VST3 plugin. Default folder is Common Files\VST3.">
+      <ComponentGroupRef Id="Vst3Files" />
+    </Feature>
+
+    <Feature Id="StandaloneFeature" Title="Standalone" Level="1" ConfigurableDirectory="INSTALLFOLDER"
+             Description="Standalone app and Start menu shortcut. Default folder is Program Files\Stupid Systems LLC\5HKR.">
+      <ComponentRef Id="Standalone" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+</Wix>
