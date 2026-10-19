@@ -67,11 +67,17 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 
     auto swingR = NormalisableRange<float> (0.5f, 0.75f, 0.001f);
     auto tuneR = NormalisableRange<float> (-12.f, 12.f, 0.01f);
+    StringArray kits;
+    for (int i = 0; i < hkr::numKits; ++i)
+        kits.add (hkr::kitNames[i]);
     for (int i = 0; i < hkr::numLanes; ++i)
     {
         layout.add (std::make_unique<AudioParameterBool> (
             ParameterID { ParamID::laneOn[i], 1 },
             String (hkr::laneNames[i]) + " On", true));
+        layout.add (std::make_unique<AudioParameterChoice> (
+            ParameterID { ParamID::laneKit[i], 1 },
+            String (hkr::laneNames[i]) + " Kit", kits, hkr::kit808));
         layout.add (std::make_unique<AudioParameterFloat> (
             ParameterID { ParamID::laneSwing[i], 1 },
             String (hkr::laneNames[i]) + " Swing", swingR, 0.5f));

@@ -9,7 +9,8 @@
 namespace hkr
 {
 
-// Tiny analog-ish hits. Accent = louder and a bit brighter.
+// Analog-ish hits. Accent = louder and a bit brighter. Tune is semitones.
+// Kits are coefficient tables, not four engines. No sample ROM.
 struct Voices
 {
     void prepare (double sampleRate)
@@ -19,9 +20,11 @@ struct Voices
         for (int i = 0; i < numLanes; ++i)
         {
             env[i] = 0.f;
-            ph[i] = 0.f;
-            ph2[i] = 0.f;
+            bright[i] = 0.f;
             lp[i] = 0.f;
+            bp[i] = 0.f;
+            for (int o = 0; o < 6; ++o)
+                osc[i][o] = 0.f;
         }
     }
 
@@ -31,34 +34,56 @@ struct Voices
             return;
         env[lane] = accent ? 1.f : 0.65f;
         bright[lane] = accent ? 1.f : 0.f;
-        ph[lane] = 0.f;
-        ph2[lane] = 0.f;
+        for (int o = 0; o < 6; ++o)
+            osc[lane][o] = 0.f;
     }
 
-    // Semitones. 0 = 12 o'clock.
     void setTune (const float semi[numLanes])
     {
         for (int i = 0; i < numLanes; ++i)
             tune[i] = semi[i];
     }
 
+    void setKit (const int k[numLanes])
+    {
+        for (int i = 0; i < numLanes; ++i)
+            kit[i] = std::clamp (k[i], 0, numKits - 1);
+    }
+
     void process (float laneOut[numLanes])
     {
-        laneOut[chh] = noiseHit (chh, 0.992f, 0.35f + 0.15f * bright[chh]);
-        laneOut[ohh] = noiseHit (ohh, 0.9975f, 0.22f + 0.1f * bright[ohh]);
-        laneOut[crash] = noiseHit (crash, 0.9994f, 0.12f);
-        laneOut[cymbal] = noiseHit (cymbal, 0.9991f, 0.18f);
-        laneOut[shaker] = noiseHit (shaker, 0.96f, 0.45f);
-        laneOut[clave] = sineHit (clave, 2450.f, 0.991f, 0.35f);
-        laneOut[cowbell] = cow();
-        laneOut[rim] = rimHit();
+        for (int i = 0; i < numLanes; ++i)
+            laneOut[i] = render (i);
     }
 
 private:
+    enum Kind : uint8_t { Noise, Metal, Tone };
+
+    struct Spec
+    {
+        Kind kind;
+        float decay;
+        float hp;    // one-pole mix 0..1
+        float lp;    // bandpass lowpass after HP; 1 = skip
+        float gain;
+        float click;
+        float bits;  // 0 = full; else round(n * bits) / bits
+        uint8_t nOsc;
+        bool square;
+        float hz[6];
+    };
+
     float noise()
     {
         rng = rng * 1664525u + 1013904223u;
         return (float) ((int) (rng >> 16) - 32768) * (1.f / 32768.f);
+    }
+
+    float quant (float x, float bits) const
+    {
+        if (bits <= 0.f)
+            return x;
+        return std::round (x * bits) / bits;
     }
 
     float ratio (int lane) const
@@ -66,51 +91,119 @@ private:
         return std::pow (2.f, tune[lane] / 12.f);
     }
 
-    float noiseHit (int lane, float decay, float hp)
+    static constexpr float kTwoPi = 6.2831853f;
+
+    float tickOsc (int lane, int o, float hz)
     {
-        env[lane] *= decay;
-        hp = std::clamp (hp * ratio (lane), 0.02f, 0.9f);
-        const float n = noise();
-        lp[lane] += hp * (n - lp[lane]);
-        return (n - lp[lane]) * env[lane] * 0.35f;
+        osc[lane][o] += (float) (2.0 * 3.141592653589793 * (double) hz / sr);
+        if (osc[lane][o] > kTwoPi)
+            osc[lane][o] -= kTwoPi;
+        return osc[lane][o];
     }
 
-    float sineHit (int lane, float hz, float decay, float gain)
+    float mixOsc (int lane, const Spec& s, float r)
     {
-        env[lane] *= decay;
-        hz *= ratio (lane);
-        ph[lane] += (float) (2.0 * 3.141592653589793 * (double) hz / sr);
-        if (ph[lane] > 6.2831853f)
-            ph[lane] -= 6.2831853f;
-        return std::sin (ph[lane]) * env[lane] * gain;
+        const int n = std::max (1, (int) s.nOsc);
+        float sum = 0.f;
+        for (int o = 0; o < n; ++o)
+        {
+            const float ph = tickOsc (lane, o, s.hz[o] * r);
+            sum += s.square ? (ph < 3.14159265f ? 1.f : -1.f) : std::sin (ph);
+        }
+        return sum / (float) n;
     }
 
-    float cow()
+    float filter (int lane, float x, float hpAmt, float lpAmt)
     {
-        env[cowbell] *= 0.993f;
-        const float e = env[cowbell];
-        const float r = ratio (cowbell);
-        ph[cowbell] += (float) (2.0 * 3.141592653589793 * 540.0 * (double) r / sr);
-        ph2[cowbell] += (float) (2.0 * 3.141592653589793 * 800.0 * (double) r / sr);
-        return (std::sin (ph[cowbell]) + 0.7f * std::sin (ph2[cowbell])) * e * 0.22f;
+        hpAmt = std::clamp (hpAmt, 0.02f, 0.9f);
+        lp[lane] += hpAmt * (x - lp[lane]);
+        float y = x - lp[lane];
+        if (lpAmt < 0.99f)
+        {
+            lpAmt = std::clamp (lpAmt, 0.02f, 0.98f);
+            bp[lane] += lpAmt * (y - bp[lane]);
+            y = bp[lane];
+        }
+        return y;
     }
 
-    float rimHit()
+    float render (int lane)
     {
-        env[rim] *= 0.985f;
-        const float r = ratio (rim);
-        const float click = env[rim] * env[rim] * noise() * 0.25f;
-        ph[rim] += (float) (2.0 * 3.141592653589793 * 380.0 * (double) r / sr);
-        return std::sin (ph[rim]) * env[rim] * 0.28f + click;
+        const Spec& s = kSpec[kit[lane]][lane];
+        env[lane] *= s.decay;
+        const float e = env[lane];
+        const float r = ratio (lane);
+        const float hpAmt = s.hp * r * (1.f + 0.2f * bright[lane]);
+        float x = 0.f;
+        if (s.kind == Noise)
+            x = quant (noise(), s.bits);
+        else
+            x = mixOsc (lane, s, r);
+        x = filter (lane, x, hpAmt, s.lp);
+        x += s.click * e * e * noise();
+        return x * e * s.gain;
     }
+
+    // Inspired-by analog models. Index = Kit enum.
+    static constexpr Spec kSpec[numKits][numLanes] = {
+        // 707 — short, thin, PCM-ish bandpass
+        {
+            { Noise, 0.978f, 0.42f, 0.55f, 0.72f, 0.35f, 0.f, 0, false, {} },           // CHH
+            { Noise, 0.990f, 0.32f, 0.50f, 0.62f, 0.22f, 0.f, 0, false, {} },           // OHH
+            { Noise, 0.9978f, 0.18f, 0.40f, 0.55f, 0.18f, 0.f, 0, false, {} },          // Crash
+            { Noise, 0.9965f, 0.24f, 0.45f, 0.55f, 0.15f, 0.f, 0, false, {} },          // Cym
+            { Noise, 0.930f, 0.50f, 0.62f, 0.70f, 0.40f, 0.f, 0, false, {} },           // Shaker
+            { Tone,  0.975f, 0.08f, 1.00f, 0.78f, 0.20f, 0.f, 1, true, { 2400.f } },    // Clave
+            { Tone,  0.984f, 0.06f, 1.00f, 0.62f, 0.08f, 0.f, 2, true, { 587.f, 845.f } }, // Cow
+            { Tone,  0.970f, 0.12f, 1.00f, 0.70f, 0.45f, 0.f, 1, false, { 420.f } },    // Rim
+        },
+        // 808 — square stacks, analog tails
+        {
+            { Metal, 0.992f, 0.38f, 1.00f, 0.58f, 0.12f, 0.f, 6, true,
+              { 205.f, 304.f, 370.f, 523.f, 540.f, 800.f } },
+            { Metal, 0.9978f, 0.28f, 1.00f, 0.50f, 0.08f, 0.f, 6, true,
+              { 205.f, 304.f, 370.f, 523.f, 540.f, 800.f } },
+            { Metal, 0.9995f, 0.16f, 1.00f, 0.42f, 0.06f, 0.f, 6, true,
+              { 205.f, 304.f, 370.f, 523.f, 540.f, 800.f } },
+            { Metal, 0.9992f, 0.22f, 1.00f, 0.45f, 0.06f, 0.f, 6, true,
+              { 205.f, 304.f, 370.f, 523.f, 540.f, 800.f } },
+            { Noise, 0.940f, 0.48f, 1.00f, 0.68f, 0.30f, 0.f, 0, false, {} },
+            { Tone,  0.988f, 0.05f, 1.00f, 0.72f, 0.18f, 0.f, 1, false, { 2500.f } },
+            { Metal, 0.993f, 0.07f, 1.00f, 0.58f, 0.05f, 0.f, 2, true, { 540.f, 800.f } },
+            { Tone,  0.982f, 0.10f, 1.00f, 0.62f, 0.40f, 0.f, 1, false, { 380.f } },
+        },
+        // 909 — gated noise hats, sizzle crash
+        {
+            { Noise, 0.972f, 0.40f, 0.58f, 0.75f, 0.42f, 0.f, 0, false, {} },
+            { Noise, 0.9960f, 0.26f, 0.48f, 0.58f, 0.22f, 0.f, 0, false, {} },
+            { Noise, 0.9993f, 0.14f, 0.38f, 0.50f, 0.16f, 0.f, 0, false, {} },
+            { Tone,  0.9988f, 0.20f, 0.42f, 0.48f, 0.20f, 0.f, 3, false, { 320.f, 540.f, 890.f } },
+            { Noise, 0.948f, 0.46f, 0.60f, 0.66f, 0.28f, 0.f, 0, false, {} },
+            { Tone,  0.980f, 0.10f, 1.00f, 0.74f, 0.35f, 0.f, 1, true, { 2700.f } },
+            { Tone,  0.990f, 0.08f, 1.00f, 0.55f, 0.10f, 0.f, 2, false, { 555.f, 835.f } },
+            { Tone,  0.978f, 0.14f, 1.00f, 0.68f, 0.50f, 0.f, 1, false, { 450.f } },
+        },
+        // Linn — darker, grainy, woody
+        {
+            { Noise, 0.989f, 0.22f, 0.40f, 0.70f, 0.28f, 48.f, 0, false, {} },
+            { Noise, 0.9962f, 0.16f, 0.35f, 0.58f, 0.16f, 48.f, 0, false, {} },
+            { Noise, 0.9991f, 0.10f, 0.28f, 0.48f, 0.12f, 32.f, 0, false, {} },
+            { Tone,  0.9985f, 0.12f, 0.32f, 0.50f, 0.10f, 0.f, 2, false, { 280.f, 420.f } },
+            { Noise, 0.910f, 0.38f, 0.55f, 0.72f, 0.50f, 24.f, 0, false, {} },
+            { Tone,  0.982f, 0.06f, 1.00f, 0.70f, 0.22f, 0.f, 1, false, { 2100.f } },
+            { Tone,  0.991f, 0.05f, 1.00f, 0.60f, 0.08f, 0.f, 2, false, { 480.f, 720.f } },
+            { Tone,  0.968f, 0.18f, 1.00f, 0.72f, 0.55f, 0.f, 1, false, { 340.f } },
+        },
+    };
 
     double sr = 44100.0;
     uint32_t rng = 1;
+    int kit[numLanes] { kit808, kit808, kit808, kit808, kit808, kit808, kit808, kit808 };
     float env[numLanes] {};
     float bright[numLanes] {};
-    float ph[numLanes] {};
-    float ph2[numLanes] {};
+    float osc[numLanes][6] {};
     float lp[numLanes] {};
+    float bp[numLanes] {};
     float tune[numLanes] {};
 };
 

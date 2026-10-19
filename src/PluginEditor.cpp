@@ -61,6 +61,11 @@ HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln
     onAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         ed.proc.apvts, ParamID::laneOn[ln], onBtn);
     addAndMakeVisible (onBtn);
+    for (int i = 0; i < hkr::numKits; ++i)
+        kitBox.addItem (hkr::kitNames[i], i + 1);
+    kitAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
+        ed.proc.apvts, ParamID::laneKit[ln], kitBox);
+    addAndMakeVisible (kitBox);
 
     auto setupKnob = [this] (juce::Slider& s, juce::Label& lab)
     {
@@ -100,7 +105,9 @@ void HKR5AudioProcessorEditor::LaneRow::refreshKnobLabels()
 void HKR5AudioProcessorEditor::LaneRow::resized()
 {
     auto r = getLocalBounds();
-    onBtn.setBounds (r.removeFromLeft (56).reduced (1));
+    auto drum = r.removeFromLeft (64).reduced (1);
+    onBtn.setBounds (drum.removeFromTop (drum.getHeight() / 2));
+    kitBox.setBounds (drum);
     auto place = [] (juce::Slider& s, juce::Label& lab, juce::Rectangle<int> col)
     {
         lab.setBounds (col.removeFromBottom (12));
@@ -596,12 +603,13 @@ void HKR5AudioProcessorEditor::layoutContent()
     auto tools = r.removeFromTop (28);
     bankBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
     patBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
-    lenBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
-    pageLeft.setBounds (tools.removeFromLeft (28).reduced (2, 2));
-    pageLabel.setBounds (tools.removeFromLeft (72));
-    pageRight.setBounds (tools.removeFromLeft (28).reduced (2, 2));
-    randomBtn.setBounds (tools.removeFromLeft (72).reduced (2, 2));
-    clearBtn.setBounds (tools.removeFromLeft (72).reduced (2, 2));
+    clearBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
+    randomBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
+    auto mid = tools.withSizeKeepingCentre (90 + 28 + 72 + 28, tools.getHeight());
+    lenBox.setBounds (mid.removeFromLeft (90).reduced (2, 2));
+    pageLeft.setBounds (mid.removeFromLeft (28).reduced (2, 2));
+    pageLabel.setBounds (mid.removeFromLeft (72));
+    pageRight.setBounds (mid.removeFromLeft (28).reduced (2, 2));
 
     auto sc = r;
     auto scToggles = sc.removeFromTop (28);

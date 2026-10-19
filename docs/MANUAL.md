@@ -12,7 +12,7 @@ Click **5HKR** + version in the top left for About.
 
 ## Grid (Main)
 
-Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that voice.
+Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that voice. The kit menu under the name picks 707 / 808 / 909 / Linn for that lane only (default 808). Mix kits across lanes. Analog models, not a sample ROM.
 
 - Click a cell: off → on (cyan) → accent (magenta). On and accent also preview the lane.
 - Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length.

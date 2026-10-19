@@ -1,9 +1,8 @@
 # DSP notes
 
-- Hats / crash / cym / shaker: LCG noise through a one-pole HP, exponential env. Accent is louder and a bit brighter (higher HP).
-- Clave: decaying sine ~2450 Hz.
-- Cowbell: 540 Hz + 800 Hz sines.
-- Rim: 380 Hz sine plus a short noise click.
+- Per-lane kit (`laneKit0..7`): 707 / 808 (default) / 909 / Linn. Coefficient tables in `Voices`. Mix kits. Analog models, no sample ROM.
+- Three generators: **noise** (LCG through HP, optional one-pole LP = crude bandpass, optional bit-round), **metal** (4–6 squares/sines then HP), **tone** (1–2 osc + click). Accent is louder and a bit brighter (higher HP). Click is `env^2 * noise`.
+- 808: square-stack hats/crash/cym (classic inharmonic ratios), 540+800 Hz square cowbell. 909: gated bandpassed-noise hats, sizzle crash, ringing ride. 707: short thin bandpass, damped cow/clave. Linn: darker noise, grainy cabasa shaker, woody cow/rim.
 - Tune is a per-lane semitone ratio on those frequencies / HP.
 - Swing delays odd 16ths: 0.5 = straight, 0.75 = half a step late.
 - Per-lane loop wraps that lane against the pattern length (clave-in-5 against 16, etc.).

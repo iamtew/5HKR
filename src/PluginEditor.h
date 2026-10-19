@@ -110,6 +110,8 @@ private:
         int lane = 0;
         juce::ToggleButton onBtn;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> onAtt;
+        juce::ComboBox kitBox;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> kitAtt;
         juce::Slider swing;
         juce::Label swingLabel;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> swingAtt;

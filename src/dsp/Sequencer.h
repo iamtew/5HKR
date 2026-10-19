@@ -25,6 +25,10 @@ inline constexpr const char* laneNames[numLanes] = {
     "CHH", "OHH", "Crash", "Cym", "Shaker", "Clave", "Cow", "Rim"
 };
 
+inline constexpr int numKits = 4;
+inline constexpr const char* kitNames[numKits] = { "707", "808", "909", "Linn" };
+enum Kit : int { kit707 = 0, kit808, kit909, kitLinn };
+
 // 2 bits per step: 0 off, 1 on, 2 accent. 16 steps per uint32.
 struct SlotData
 {

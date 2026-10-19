@@ -26,6 +26,10 @@ inline constexpr const char* laneOn[hkr::numLanes] = {
     "laneOn0", "laneOn1", "laneOn2", "laneOn3",
     "laneOn4", "laneOn5", "laneOn6", "laneOn7"
 };
+inline constexpr const char* laneKit[hkr::numLanes] = {
+    "laneKit0", "laneKit1", "laneKit2", "laneKit3",
+    "laneKit4", "laneKit5", "laneKit6", "laneKit7"
+};
 inline constexpr const char* laneSwing[hkr::numLanes] = {
     "laneSwing0", "laneSwing1", "laneSwing2", "laneSwing3",
     "laneSwing4", "laneSwing5", "laneSwing6", "laneSwing7"

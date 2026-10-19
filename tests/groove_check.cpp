@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <tuple>
 
 int main()
 {
@@ -189,6 +190,44 @@ int main()
         hiRms = std::sqrt (hiRms / 44100.f);
         assert (hiRms > 0.4f);
         assert (loRms < 0.05f);
+    }
+
+    {
+        Voices v;
+        float zeroTune[numLanes] {};
+        float lanes[numLanes] {};
+        auto energy = [&] (int k, int lane, int n, int skip)
+        {
+            v.prepare (44100.0);
+            int kits[numLanes];
+            for (int i = 0; i < numLanes; ++i)
+                kits[i] = k;
+            v.setKit (kits);
+            v.setTune (zeroTune);
+            v.trigger (lane, true);
+            float e = 0.f, peak = 0.f, late = 0.f;
+            for (int i = 0; i < n; ++i)
+            {
+                v.process (lanes);
+                const float x = lanes[lane];
+                const float a = x * x;
+                e += a;
+                peak = std::max (peak, std::abs (x));
+                if (i >= skip)
+                    late += a;
+            }
+            return std::tuple<float, float, float> { e, peak, late };
+        };
+        const auto [e808chh, p808chh, late808] = energy (kit808, chh, 800, 150);
+        const auto [e808cow, p808cow, lateCow] = energy (kit808, cowbell, 800, 150);
+        const auto [e909chh, p909chh, late909] = energy (kit909, chh, 800, 150);
+        assert (p808chh > 0.2f);
+        assert (p808cow > 0.2f);
+        assert (std::abs (e808chh - e808cow) / (e808chh + e808cow + 1e-9f) > 0.1f);
+        assert (late808 > late909 * 1.5f);
+        (void) p909chh;
+        (void) lateCow;
+        (void) e909chh;
     }
 
     {
