@@ -21,6 +21,14 @@
         <FILE id="seqH001" name="Sequencer.h" compile="0" resource="0" file="src/dsp/Sequencer.h"/>
         <FILE id="voiH001" name="Voices.h" compile="0" resource="0" file="src/dsp/Voices.h"/>
         <FILE id="mtrH001" name="Meter.h" compile="0" resource="0" file="src/dsp/Meter.h"/>
+        <FILE id="fxcH001" name="FxChain.h" compile="0" resource="0" file="src/dsp/FxChain.h"/>
+        <FILE id="eqbH001" name="EqBiquad.h" compile="0" resource="0" file="src/dsp/EqBiquad.h"/>
+        <FILE id="peqH001" name="ParametricEq.h" compile="0" resource="0" file="src/dsp/ParametricEq.h"/>
+        <FILE id="eqaH001" name="EqAnalyser.h" compile="0" resource="0" file="src/dsp/EqAnalyser.h"/>
+      </GROUP>
+      <GROUP id="uiGrp01" name="ui">
+        <FILE id="efxH001" name="EffectsPage.h" compile="0" resource="0" file="src/ui/EffectsPage.h"/>
+        <FILE id="eqpH001" name="EqPage.h" compile="0" resource="0" file="src/ui/EqPage.h"/>
       </GROUP>
       <GROUP id="prmGrp01" name="parameters">
         <FILE id="pidH001" name="ParameterIDs.h" compile="0" resource="0" file="src/parameters/ParameterIDs.h"/>
@@ -42,6 +50,7 @@
     <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
@@ -67,6 +76,7 @@
         <MODULEPATH id="juce_graphics" path="C:\Users\Mikael\JUCE\modules"/>
         <MODULEPATH id="juce_gui_basics" path="C:\Users\Mikael\JUCE\modules"/>
         <MODULEPATH id="juce_gui_extra" path="C:\Users\Mikael\JUCE\modules"/>
+        <MODULEPATH id="juce_dsp" path="C:\Users\Mikael\JUCE\modules"/>
       </MODULEPATHS>
     </VS2022>
   </EXPORTFORMATS>

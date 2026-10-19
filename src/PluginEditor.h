@@ -1,10 +1,13 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "ui/EffectsPage.h"
+#include "ui/EqPage.h"
 
 #include <functional>
 
 class HKR5AudioProcessorEditor : public juce::AudioProcessorEditor,
+                                 public juce::DragAndDropContainer,
                                  private juce::Timer
 {
 public:
@@ -113,6 +116,9 @@ private:
         juce::Slider tune;
         juce::Label tuneLabel;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> tuneAtt;
+        juce::Slider send;
+        juce::Label sendLabel;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sendAtt;
         juce::Rectangle<int> cells[16];
         int values[16] {};
         int play = -1;
@@ -136,6 +142,8 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> bankAtt, patAtt;
     juce::OwnedArray<LaneRow> rows;
     juce::OwnedArray<Knob> scKnobs;
+    EffectsPage effectsPage;
+    EqPage eqPage;
     juce::ToggleButton scOn { "Sidechain" };
     juce::ToggleButton scListen { "Listen" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> scOnAtt, scListenAtt;

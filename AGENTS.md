@@ -13,7 +13,8 @@ Not a sample player.
 src/
   PluginProcessor.h/.cpp
   PluginEditor.h/.cpp
-  dsp/Sequencer.h Voices.h Meter.h
+  dsp/Sequencer.h Voices.h Meter.h FxChain.h EqBiquad.h ParametricEq.h EqAnalyser.h
+  ui/EffectsPage.h EqPage.h
   parameters/ParameterIDs.h ParameterLayout.h Library.h
 justfile
 5HKR.jucer

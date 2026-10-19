@@ -4,7 +4,7 @@ Perc groove box. Eight synth lanes, not a sample player. The groove runs while a
 
 ## Pages
 
-**Main / Sidechain** (title bar) — chevrons or click the name to switch.
+**Main / Effects / EQ / Sidechain** (title bar) — chevrons or click the name to switch.
 
 Click **5HKR** + version in the top left for About.
 
@@ -16,7 +16,7 @@ Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that v
 
 - Click a cell: off → on (cyan) → accent (magenta).
 - Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length.
-- **Tune** ±12 st and **Swing** 50–75% per lane.
+- **Tune** ±12 st, **Swing** 50–75%, and **FX** 0–100% per lane (how much of that lane goes into the effects chain).
 - **Bank** / **Pat** — 3 banks × 12 patterns.
 - **1 / 2 / 4 bar** — 16 / 32 / 64 sixteenths. Extra bars tile the current length. Use the step pager when longer than one bar.
 
@@ -44,5 +44,13 @@ Hold C1 for bank 1 pattern 1 (Ableton C0). C2 is bank 2 pattern 1. Mapping start
 ## Sidechain
 
 Ducks the mixed lanes from the plugin audio input. **Sidechain** is off until you turn it on. **HP** / **LP** isolate the part of the input the ducker follows. **Listen** puts that filtered key on the output so you can hear it (standalone can feed back if a live mic is the input). Then Thresh, Amount, Attack, Release, Mix.
+
+## Effects
+
+Click a name in the left rail to turn it on. Drag rails to reorder. Enabled effects show knobs: Chorus, Delay (sync or free), Flanger, Phaser, Reverb. Each has its own Mix. Lane **FX** must be up or the chain is silent.
+
+## EQ
+
+Post-effects 5-band EQ (K1X-style). Toggle EQ, drag nodes for freq/gain, scroll for Q, inspector on the left.
 
 Drag the window corner to scale; the scale is saved with the session.

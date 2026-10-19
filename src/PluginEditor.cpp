@@ -4,8 +4,8 @@ namespace
 {
 constexpr int kEditorW = 980;
 constexpr int kEditorH = 560;
-constexpr const char* kPageNames[] = { "Main", "Sidechain" };
-constexpr int kPageCount = 2;
+constexpr const char* kPageNames[] = { "Main", "Effects", "EQ", "Sidechain" };
+constexpr int kPageCount = 4;
 constexpr int kPad = 8;
 constexpr int kTitleH = 40;
 constexpr int kTitleHitW = 150;
@@ -74,12 +74,16 @@ HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln
     };
     setupKnob (tune, tuneLabel);
     setupKnob (swing, swingLabel);
+    setupKnob (send, sendLabel);
     tuneAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         ed.proc.apvts, ParamID::laneTune[ln], tune);
     swingAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         ed.proc.apvts, ParamID::laneSwing[ln], swing);
+    sendAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        ed.proc.apvts, ParamID::laneSend[ln], send);
     tune.onValueChange = [this] { refreshKnobLabels(); };
     swing.onValueChange = [this] { refreshKnobLabels(); };
+    send.onValueChange = [this] { refreshKnobLabels(); };
     refreshKnobLabels();
 }
 
@@ -89,6 +93,8 @@ void HKR5AudioProcessorEditor::LaneRow::refreshKnobLabels()
     tuneLabel.setText ("Tune " + juce::String (st, 1), juce::dontSendNotification);
     swingLabel.setText ("Swing " + juce::String (juce::roundToInt ((float) swing.getValue() * 100.f)) + "%",
                         juce::dontSendNotification);
+    sendLabel.setText ("FX " + juce::String (juce::roundToInt ((float) send.getValue() * 100.f)) + "%",
+                       juce::dontSendNotification);
 }
 
 void HKR5AudioProcessorEditor::LaneRow::resized()
@@ -102,6 +108,7 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
     };
     place (tune, tuneLabel, r.removeFromLeft (52));
     place (swing, swingLabel, r.removeFromLeft (52));
+    place (send, sendLabel, r.removeFromLeft (52));
     const int cellW = juce::jmax (1, r.getWidth() / 16);
     for (int i = 0; i < 16; ++i)
         cells[i] = { r.getX() + i * cellW, r.getY() + 4, cellW - 2, r.getHeight() - 8 };
@@ -393,7 +400,7 @@ void HKR5AudioProcessorEditor::AboutBox::resized()
 }
 
 HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
-    : juce::AudioProcessorEditor (p), proc (p)
+    : juce::AudioProcessorEditor (p), proc (p), effectsPage (p), eqPage (p)
 {
     setLookAndFeel (&panelLnF);
     setOpaque (true);
@@ -496,6 +503,11 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
         content.addAndMakeVisible (k);
     }
 
+    content.addChildComponent (effectsPage);
+    content.addChildComponent (eqPage);
+    effectsPage.setVisible (false);
+    eqPage.setVisible (false);
+
     content.addChildComponent (aboutBox);
     aboutBox.setVisible (false);
 
@@ -560,7 +572,7 @@ void HKR5AudioProcessorEditor::layoutContent()
     auto title = r.removeFromTop (kTitleH);
     title.removeFromLeft (kTitleHitW);
     volumeStrip.setBounds (title.removeFromRight (240).reduced (2, 4));
-    pageBar.setBounds (title.removeFromLeft (88).reduced (4, 4));
+    pageBar.setBounds (title.removeFromLeft (108).reduced (4, 4));
     const int barW = title.getWidth() / 2;
     patchBar.setBounds (title.removeFromLeft (barW).reduced (6, 2));
     bankBar.setBounds (title.reduced (6, 2));
@@ -585,6 +597,9 @@ void HKR5AudioProcessorEditor::layoutContent()
     for (int i = 0; i < rows.size(); ++i)
         rows[i]->setBounds (r.getX(), r.getY() + i * rowH, r.getWidth(), rowH);
 
+    effectsPage.setBounds (r);
+    eqPage.setBounds (r);
+
     aboutBox.setBounds (content.getLocalBounds());
     applyPageVisibility();
 }
@@ -594,6 +609,8 @@ void HKR5AudioProcessorEditor::timerCallback()
     volumeStrip.refresh();
     refreshBars();
     refreshGrid();
+    if (editorPage == 1)
+        effectsPage.refresh();
     // MIDI slot select does not write APVTS; keep combos in sync.
     bankBox.setSelectedItemIndex (proc.currentBank(), juce::dontSendNotification);
     patBox.setSelectedItemIndex (proc.currentPattern(), juce::dontSendNotification);
@@ -635,6 +652,9 @@ void HKR5AudioProcessorEditor::setEditorPage (int page)
 void HKR5AudioProcessorEditor::applyPageVisibility()
 {
     const bool main = editorPage == 0;
+    const bool fx = editorPage == 1;
+    const bool eq = editorPage == 2;
+    const bool sc = editorPage == 3;
     bankBox.setVisible (main);
     patBox.setVisible (main);
     lenBox.setVisible (main);
@@ -643,10 +663,14 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     pageLabel.setVisible (main);
     for (auto* row : rows)
         row->setVisible (main);
-    scOn.setVisible (! main);
-    scListen.setVisible (! main);
+    scOn.setVisible (sc);
+    scListen.setVisible (sc);
     for (auto* k : scKnobs)
-        k->setVisible (! main);
+        k->setVisible (sc);
+    effectsPage.setVisible (fx);
+    eqPage.setVisible (eq);
+    if (fx)
+        effectsPage.refresh();
 }
 
 void HKR5AudioProcessorEditor::contentMouseUp (const juce::MouseEvent& e)

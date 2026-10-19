@@ -42,18 +42,16 @@ struct Voices
             tune[i] = semi[i];
     }
 
-    float process()
+    void process (float laneOut[numLanes])
     {
-        float mix = 0.f;
-        mix += noiseHit (chh, 0.992f, 0.35f + 0.15f * bright[chh]);
-        mix += noiseHit (ohh, 0.9975f, 0.22f + 0.1f * bright[ohh]);
-        mix += noiseHit (crash, 0.9994f, 0.12f);
-        mix += noiseHit (cymbal, 0.9991f, 0.18f);
-        mix += noiseHit (shaker, 0.96f, 0.45f);
-        mix += sineHit (clave, 2450.f, 0.991f, 0.35f);
-        mix += cow();
-        mix += rimHit();
-        return mix;
+        laneOut[chh] = noiseHit (chh, 0.992f, 0.35f + 0.15f * bright[chh]);
+        laneOut[ohh] = noiseHit (ohh, 0.9975f, 0.22f + 0.1f * bright[ohh]);
+        laneOut[crash] = noiseHit (crash, 0.9994f, 0.12f);
+        laneOut[cymbal] = noiseHit (cymbal, 0.9991f, 0.18f);
+        laneOut[shaker] = noiseHit (shaker, 0.96f, 0.45f);
+        laneOut[clave] = sineHit (clave, 2450.f, 0.991f, 0.35f);
+        laneOut[cowbell] = cow();
+        laneOut[rim] = rimHit();
     }
 
 private:

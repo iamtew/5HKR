@@ -1,6 +1,8 @@
+#include "dsp/EqBiquad.h"
 #include "dsp/Sequencer.h"
 #include "dsp/Voices.h"
 #include "parameters/Library.h"
+#include "parameters/ParameterIDs.h"
 
 #include <cassert>
 #include <cmath>
@@ -156,6 +158,21 @@ int main()
         hiRms = std::sqrt (hiRms / 44100.f);
         assert (hiRms > 0.4f);
         assert (loRms < 0.05f);
+    }
+
+    {
+        int in[] = { 4, 0, 2 };
+        int out[hkr::fxCount] {};
+        const auto packed = hkr::packFxOrder (in, 3);
+        assert (hkr::unpackFxOrder (packed, out) == 3);
+        assert (out[0] == 4 && out[1] == 0 && out[2] == 2);
+        assert (hkr::completeFxOrder (out, 3) == hkr::fxCount);
+        assert (out[3] == 1 && out[4] == 3);
+
+        const auto peak = hkr::eqBiquad (hkr::eqTypePeak, 44100.f, 1000.f, 0.7f, 6.f);
+        const float w = 2.f * 3.14159265f * 1000.f / 44100.f;
+        const float mag = hkr::eqBiquadMag (peak, w);
+        assert (mag > 1.8f && mag < 2.2f);
     }
 
     std::puts ("groove_check ok");

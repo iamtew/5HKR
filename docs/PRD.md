@@ -13,7 +13,9 @@ A perc groove box: eight tiny analog-ish synth lanes on a 16th grid, with banks 
 - Per-lane Tune and mute
 - Sidechain duck from the audio input
 - Patch + bank library (`.5hkrp` / `.5hkrb`)
-- Editor pages: Main, Sidechain
+- Editor pages: Main, Effects, EQ, Sidechain
+- Per-lane FX send into a global delay / reverb / chorus / flanger / phaser chain
+- Post-effects 5-band parametric EQ
 - VST3 + Standalone
 - Magenta / cyan chassis, logo, MIT
 
@@ -21,4 +23,4 @@ A perc groove box: eight tiny analog-ish synth lanes on a 16th grid, with banks 
 
 - Sample playback
 - MIDI out of the sequence
-- Reorderable FX rack
+- Comp / dist / filter / insert-EQ inside the FX rack

@@ -9,6 +9,7 @@ namespace
 const juce::Identifier kBanksXml { "BANKS_XML" };
 const juce::Identifier kPatchName { "PATCH_NAME" };
 const juce::Identifier kBankName { "BANK_NAME" };
+const juce::Identifier kFxOrder { "FX_ORDER" };
 constexpr const char* kInitPatch = "Init Patch";
 constexpr const char* kInitBank = "Init Bank";
 constexpr const char* kPatchExt = ".5hkrp";
@@ -80,7 +81,10 @@ HKR5AudioProcessor::HKR5AudioProcessor()
     apvts.state.setProperty (kBankName, kInitBank, nullptr);
     apvts.addParameterListener (ParamID::seqBank, this);
     apvts.addParameterListener (ParamID::seqPattern, this);
+    int order[hkr::fxCount];
+    publishFxOrder (order, hkr::fillDefaultFxOrder (order));
     loadBanksFromState();
+    loadFxOrderFromState();
 }
 
 HKR5AudioProcessor::~HKR5AudioProcessor()
@@ -101,13 +105,19 @@ void HKR5AudioProcessor::selectSlot (int bank, int pat)
     curPattern.store (juce::jlimit (0, hkr::Sequencer::patternsPerBank - 1, pat), std::memory_order_relaxed);
 }
 
-void HKR5AudioProcessor::prepareToPlay (double sampleRate, int)
+void HKR5AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     sequencer.prepare (sampleRate);
     voices.prepare (sampleRate);
     ducker.prepare (sampleRate);
     scFiltL.prepare (sampleRate);
     scFiltR.prepare (sampleRate);
+    const int ch = juce::jmax (2, getTotalNumOutputChannels());
+    const int n = juce::jmax (samplesPerBlock, 64);
+    sendBuf.setSize (ch, n);
+    fx.prepare (sampleRate, n, ch);
+    postEq.prepare (sampleRate, n, ch);
+    analyser.prepare (sampleRate);
 }
 
 bool HKR5AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -265,11 +275,13 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
     float swing[hkr::numLanes];
     float tune[hkr::numLanes];
+    float sendAmt[hkr::numLanes];
     uint8_t enabled = 0;
     for (int i = 0; i < hkr::numLanes; ++i)
     {
         swing[i] = raw (ParamID::laneSwing[i]);
         tune[i] = raw (ParamID::laneTune[i]);
+        sendAmt[i] = raw (ParamID::laneSend[i]);
         if (raw (ParamID::laneOn[i]) >= 0.5f)
             enabled = (uint8_t) (enabled | (1u << i));
     }
@@ -280,8 +292,16 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const int nh = sequencer.advance (slot, n, tempoBpm(), run, swing, enabled, hits, 64);
     playheadUi.store (sequencer.playhead(), std::memory_order_relaxed);
 
+    // ponytail: grow only if host exceeds prepare size
+    if (sendBuf.getNumSamples() < n || sendBuf.getNumChannels() < out.getNumChannels())
+        sendBuf.setSize (juce::jmax (out.getNumChannels(), sendBuf.getNumChannels()),
+                         juce::jmax (n, sendBuf.getNumSamples()), false, false, true);
+    sendBuf.clear();
+
     float* l = out.getWritePointer (0);
     float* r = out.getNumChannels() > 1 ? out.getWritePointer (1) : nullptr;
+    float* sL = sendBuf.getWritePointer (0);
+    float* sR = sendBuf.getNumChannels() > 1 ? sendBuf.getWritePointer (1) : nullptr;
 
     const float vol = raw (ParamID::volume);
     const bool haveSc = scL != nullptr;
@@ -296,38 +316,68 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const float hpHz = raw (ParamID::scHp);
     const float lpHz = raw (ParamID::scLp);
 
+    float lanes[hkr::numLanes];
     for (int i = 0; i < n; ++i)
     {
         for (int h = 0; h < nh; ++h)
             if (hits[h].offset == i)
                 voices.trigger (hits[h].lane, hits[h].accent);
-        float s = voices.process() * vol;
-        float fL = 0.f, fR = 0.f;
-        if (scKey)
+        voices.process (lanes);
+        float dry = 0.f, snd = 0.f;
+        for (int ln = 0; ln < hkr::numLanes; ++ln)
         {
-            fL = scFiltL.process (scL[i], hpHz, lpHz);
-            fR = scFiltR.process (scR[i], hpHz, lpHz);
+            dry += lanes[ln] * (1.f - sendAmt[ln]);
+            snd += lanes[ln] * sendAmt[ln];
         }
-        if (scOn)
+        dry *= vol;
+        snd *= vol;
+        l[i] = dry;
+        sL[i] = snd;
+        if (r != nullptr)
+            r[i] = dry;
+        if (sR != nullptr)
+            sR[i] = snd;
+    }
+
+    auto sendView = juce::AudioBuffer<float> (sendBuf.getArrayOfWritePointers(),
+                                              out.getNumChannels(), n);
+    fx.process (sendView, tempoBpm(), apvts, fxOrder.load (std::memory_order_relaxed));
+    for (int ch = 0; ch < out.getNumChannels(); ++ch)
+        out.addFrom (ch, 0, sendBuf, ch, 0, n);
+
+    hkr::EqBandParam bands[hkr::eqBandCount];
+    hkr::readEqBands (apvts, bands);
+    postEq.process (out, hkr::postEqEnabled (apvts), bands);
+
+    if (scOn || scListen)
+    {
+        for (int i = 0; i < n; ++i)
         {
-            const float scAbs = 0.5f * (std::abs (fL) + std::abs (fR));
-            const float g = ducker.gain (scAbs, thr, amt, atk, rel);
-            s *= (1.f - mix) + mix * g;
-        }
-        if (scListen)
-        {
-            l[i] = fL;
-            if (r != nullptr)
-                r[i] = fR;
-        }
-        else
-        {
-            l[i] = s;
-            if (r != nullptr)
-                r[i] = s;
+            float fL = 0.f, fR = 0.f;
+            if (scKey)
+            {
+                fL = scFiltL.process (scL[i], hpHz, lpHz);
+                fR = scFiltR.process (scR[i], hpHz, lpHz);
+            }
+            if (scOn)
+            {
+                const float scAbs = 0.5f * (std::abs (fL) + std::abs (fR));
+                const float g = ducker.gain (scAbs, thr, amt, atk, rel);
+                const float w = (1.f - mix) + mix * g;
+                l[i] *= w;
+                if (r != nullptr)
+                    r[i] *= w;
+            }
+            if (scListen)
+            {
+                l[i] = fL;
+                if (r != nullptr)
+                    r[i] = fR;
+            }
         }
     }
 
+    analyser.push (out);
     meter.push (out);
 }
 
@@ -370,9 +420,90 @@ void HKR5AudioProcessor::loadBanksFromState()
         applySlots (slots);
 }
 
+void HKR5AudioProcessor::publishFxOrder (const int* types, int n)
+{
+    int buf[hkr::fxCount];
+    int m = 0;
+    if (types == nullptr || n <= 0)
+        m = hkr::fillDefaultFxOrder (buf);
+    else
+    {
+        m = n > hkr::fxCount ? hkr::fxCount : n;
+        for (int i = 0; i < m; ++i)
+            buf[i] = types[i];
+        m = hkr::completeFxOrder (buf, m);
+    }
+    const auto packed = hkr::packFxOrder (buf, m);
+    fxOrder.store (packed, std::memory_order_relaxed);
+    char str[32];
+    hkr::formatFxOrder (packed, str, (int) sizeof (str));
+    apvts.state.setProperty (kFxOrder, juce::String (str), nullptr);
+}
+
+void HKR5AudioProcessor::writeFxOrderToState()
+{
+    char buf[32];
+    hkr::formatFxOrder (fxOrder.load (std::memory_order_relaxed), buf, (int) sizeof (buf));
+    apvts.state.setProperty (kFxOrder, juce::String (buf), nullptr);
+}
+
+void HKR5AudioProcessor::loadFxOrderFromState()
+{
+    const auto s = apvts.state.getProperty (kFxOrder, "").toString();
+    int types[hkr::fxCount];
+    int n = hkr::parseFxOrder (s.toRawUTF8(), types);
+    n = hkr::completeFxOrder (types, n);
+    fxOrder.store (hkr::packFxOrder (types, n), std::memory_order_relaxed);
+}
+
+void HKR5AudioProcessor::getFxOrder (int* types, int& n) const
+{
+    n = hkr::unpackFxOrder (fxOrder.load (std::memory_order_relaxed), types);
+    n = hkr::completeFxOrder (types, n);
+}
+
+void HKR5AudioProcessor::setFxEnabled (int type, bool on)
+{
+    if (type < 0 || type >= hkr::fxCount)
+        return;
+    if (auto* param = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter (ParamID::fxOnIds[type])))
+    {
+        param->beginChangeGesture();
+        param->setValueNotifyingHost (on ? 1.f : 0.f);
+        param->endChangeGesture();
+    }
+}
+
+void HKR5AudioProcessor::moveFx (int fromType, int beforeType)
+{
+    if (fromType < 0 || fromType >= hkr::fxCount || fromType == beforeType)
+        return;
+    int types[hkr::fxCount];
+    int n = 0;
+    getFxOrder (types, n);
+    int tmp[hkr::fxCount];
+    int m = 0;
+    bool inserted = false;
+    for (int i = 0; i < n; ++i)
+    {
+        if (types[i] == fromType)
+            continue;
+        if (types[i] == beforeType && ! inserted)
+        {
+            tmp[m++] = fromType;
+            inserted = true;
+        }
+        tmp[m++] = types[i];
+    }
+    if (! inserted)
+        tmp[m++] = fromType;
+    publishFxOrder (tmp, m);
+}
+
 void HKR5AudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     writeBanksToState();
+    writeFxOrderToState();
     if (auto xml = apvts.copyState().createXml())
     {
         xml->setAttribute ("uiScale", uiScale);
@@ -389,6 +520,7 @@ void HKR5AudioProcessor::setStateInformation (const void* data, int sizeInBytes)
             xml->removeAttribute ("uiScale");
             apvts.replaceState (juce::ValueTree::fromXml (*xml));
             loadBanksFromState();
+            loadFxOrderFromState();
         }
 }
 
@@ -435,6 +567,8 @@ void HKR5AudioProcessor::initPatch()
         param->setValueNotifyingHost (param->getDefaultValue());
         param->endChangeGesture();
     }
+    int order[hkr::fxCount];
+    publishFxOrder (order, hkr::fillDefaultFxOrder (order));
     apvts.state.setProperty (kPatchName, kInitPatch, nullptr);
 }
 
@@ -459,6 +593,7 @@ bool HKR5AudioProcessor::loadPatchFile (const juce::File& src, const juce::Strin
     apvts.state.setProperty (kBanksXml, banks, nullptr);
     apvts.state.setProperty (kBankName, bname, nullptr);
     apvts.state.setProperty (kPatchName, shownName, nullptr);
+    loadFxOrderFromState();
     return true;
 }
 

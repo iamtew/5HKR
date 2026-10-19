@@ -1,6 +1,9 @@
 #pragma once
 
+#include "dsp/EqAnalyser.h"
+#include "dsp/FxChain.h"
 #include "dsp/Meter.h"
+#include "dsp/ParametricEq.h"
 #include "dsp/Sequencer.h"
 #include "dsp/Voices.h"
 #include "parameters/ParameterLayout.h"
@@ -54,6 +57,11 @@ public:
     void setPatLen (int length);
 
     hkr::OutputMeter& outputMeter() { return meter; }
+    hkr::EqAnalyser& eqAnalyser() { return analyser; }
+
+    void getFxOrder (int* types, int& n) const;
+    void setFxEnabled (int type, bool on);
+    void moveFx (int fromType, int beforeType);
 
     juce::File patchesDir() const;
     juce::File banksDir() const;
@@ -86,14 +94,22 @@ private:
     void snapSlot (int bank, int pat, hkr::SlotData& out) const;
     void writeBanksToState();
     void loadBanksFromState();
+    void publishFxOrder (const int* types, int n);
+    void writeFxOrderToState();
+    void loadFxOrderFromState();
     bool loadPatchFile (const juce::File& src, const juce::String& shownName);
     bool loadBankFile (const juce::File& src, const juce::String& shownName);
 
     hkr::Sequencer sequencer;
     hkr::Voices voices;
+    hkr::FxChain fx;
+    hkr::ParametricEq postEq;
+    hkr::EqAnalyser analyser;
     hkr::Ducker ducker;
     hkr::ScFilter scFiltL, scFiltR;
     hkr::OutputMeter meter;
+    juce::AudioBuffer<float> sendBuf;
+    std::atomic<std::uint64_t> fxOrder { 0 };
 
     std::atomic<uint8_t> slotLen[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank] {};
     std::atomic<uint8_t> slotLoop[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank][hkr::numLanes] {};
