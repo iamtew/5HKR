@@ -61,6 +61,7 @@ public:
 
     hkr::OutputMeter& outputMeter() { return meter; }
     hkr::EqAnalyser& eqAnalyser() { return analyser; }
+    hkr::EqAnalyser& scAnalyser() { return scSpec; }
 
     void getFxOrder (int* types, int& n) const;
     void setFxEnabled (int type, bool on);
@@ -108,6 +109,7 @@ private:
     hkr::FxChain fx;
     hkr::ParametricEq postEq;
     hkr::EqAnalyser analyser;
+    hkr::EqAnalyser scSpec;
     hkr::Ducker ducker;
     hkr::ScFilter scFiltL, scFiltR;
     hkr::OutputMeter meter;

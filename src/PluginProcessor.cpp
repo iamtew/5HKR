@@ -118,6 +118,7 @@ void HKR5AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     fx.prepare (sampleRate, n, ch);
     postEq.prepare (sampleRate, n, ch);
     analyser.prepare (sampleRate);
+    scSpec.prepare (sampleRate);
 }
 
 bool HKR5AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -339,7 +340,6 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const bool haveSc = scL != nullptr;
     const bool scOn = raw (ParamID::scOn) >= 0.5f && haveSc;
     const bool scListen = raw (ParamID::scListen) >= 0.5f && haveSc;
-    const bool scKey = scOn || scListen;
     const float thr = raw (ParamID::scThresh);
     const float amt = raw (ParamID::scAmount);
     const float atk = raw (ParamID::scAttack);
@@ -384,16 +384,15 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     hkr::readEqBands (apvts, bands);
     postEq.process (out, hkr::postEqEnabled (apvts), bands);
 
-    if (scOn || scListen)
+    // Filter the input key whenever the bus is there so HP/LP show on the spectrum
+    // even before duck/Listen. Same samples go to Ducker.
+    if (haveSc)
     {
         for (int i = 0; i < n; ++i)
         {
-            float fL = 0.f, fR = 0.f;
-            if (scKey)
-            {
-                fL = scFiltL.process (scL[i], hpHz, lpHz);
-                fR = scFiltR.process (scR[i], hpHz, lpHz);
-            }
+            const float fL = scFiltL.process (scL[i], hpHz, lpHz);
+            const float fR = scFiltR.process (scR[i], hpHz, lpHz);
+            scSpec.pushSample (0.5f * (fL + fR));
             if (scOn)
             {
                 const float scAbs = 0.5f * (std::abs (fL) + std::abs (fR));

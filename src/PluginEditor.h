@@ -5,6 +5,7 @@
 #include "ui/EqPage.h"
 
 #include <functional>
+#include <vector>
 
 class HKR5AudioProcessorEditor : public juce::AudioProcessorEditor,
                                  public juce::DragAndDropContainer,
@@ -135,6 +136,15 @@ private:
         juce::ToggleButton closeBtn { "Close" };
     };
 
+    // Filtered sidechain key, log Hz. HP/LP lines are markers, not handles.
+    struct ScSpec : public juce::Component
+    {
+        explicit ScSpec (HKR5AudioProcessor& p) : proc (p) {}
+        void paint (juce::Graphics& g) override;
+        HKR5AudioProcessor& proc;
+        std::vector<float> specDb;
+    };
+
     PanelLnF panelLnF;
     Content content { *this };
     int baseW = 0, baseH = 0;
@@ -148,6 +158,7 @@ private:
     EqPage eqPage;
     juce::ToggleButton scOn { "Sidechain" };
     juce::ToggleButton scListen { "Listen" };
+    ScSpec scSpec { proc };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> scOnAtt, scListenAtt;
     juce::TextButton pageLeft { "<" }, pageRight { ">" };
     juce::TextButton randomBtn { "Random" }, clearBtn { "Clear" };

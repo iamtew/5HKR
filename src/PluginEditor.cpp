@@ -1,5 +1,7 @@
 #include "PluginEditor.h"
 
+#include <cmath>
+
 namespace
 {
 constexpr int kEditorW = 980;
@@ -410,6 +412,66 @@ void HKR5AudioProcessorEditor::AboutBox::resized()
     closeBtn.setBounds (card.removeFromBottom (36).reduced (80, 6));
 }
 
+void HKR5AudioProcessorEditor::ScSpec::paint (juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat();
+    g.setColour (juce::Colour (0xff12151a));
+    g.fillRoundedRectangle (bounds, 4.f);
+
+    auto r = bounds.reduced (28.f, 18.f);
+    if (r.getWidth() < 2.f || r.getHeight() < 2.f)
+        return;
+
+    auto hzToX = [] (float hz)
+    {
+        hz = juce::jlimit (20.f, 20000.f, hz);
+        return std::log10 (hz / 20.f) / 3.f;
+    };
+    auto specToY = [] (float db)
+    {
+        return 1.f - juce::jlimit (0.f, 1.f, (db + 72.f) / 72.f);
+    };
+
+    g.setColour (juce::Colour (0xff2a3444));
+    const float gridHz[] = { 20.f, 50.f, 100.f, 200.f, 500.f, 1000.f, 2000.f, 5000.f, 10000.f, 20000.f };
+    for (float hz : gridHz)
+        g.drawVerticalLine ((int) (r.getX() + hzToX (hz) * r.getWidth()), r.getY(), r.getBottom());
+
+    const int n = juce::jmax (2, (int) r.getWidth());
+    if ((int) specDb.size() != n)
+        specDb.resize ((size_t) n);
+    proc.scAnalyser().copyLogDb (specDb.data(), n);
+    juce::Path spec;
+    spec.startNewSubPath (r.getX(), r.getBottom());
+    for (int i = 0; i < n; ++i)
+    {
+        const float x01 = (float) i / (float) (n - 1);
+        spec.lineTo (r.getX() + x01 * r.getWidth(),
+                     r.getY() + specToY (specDb[(size_t) i]) * r.getHeight());
+    }
+    spec.lineTo (r.getRight(), r.getBottom());
+    spec.closeSubPath();
+    g.setColour (juce::Colour (0x55d94214));
+    g.fillPath (spec);
+
+    auto raw = [this] (const char* id) -> float
+    {
+        if (auto* v = proc.apvts.getRawParameterValue (id))
+            return v->load();
+        return 0.f;
+    };
+    g.setColour (kCyan.withAlpha (0.45f));
+    g.drawVerticalLine ((int) (r.getX() + hzToX (raw (ParamID::scHp)) * r.getWidth()),
+                        r.getY(), r.getBottom());
+    g.drawVerticalLine ((int) (r.getX() + hzToX (raw (ParamID::scLp)) * r.getWidth()),
+                        r.getY(), r.getBottom());
+
+    g.setColour (kMetal.withAlpha (0.7f));
+    g.setFont (boldFont (9.f));
+    g.drawText ("20", r.withHeight (14.f).translated (0.f, r.getHeight()), juce::Justification::centredLeft);
+    g.drawText ("20k", r.withHeight (14.f).translated (0.f, r.getHeight()), juce::Justification::centredRight);
+}
+
 HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
     : juce::AudioProcessorEditor (p), proc (p), effectsPage (p), eqPage (p)
 {
@@ -525,6 +587,7 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
         auto* k = scKnobs.add (new Knob (proc.apvts, s.id, s.name));
         content.addAndMakeVisible (k);
     }
+    content.addAndMakeVisible (scSpec);
 
     content.addChildComponent (effectsPage);
     content.addChildComponent (eqPage);
@@ -615,9 +678,12 @@ void HKR5AudioProcessorEditor::layoutContent()
     auto scToggles = sc.removeFromTop (28);
     scOn.setBounds (scToggles.removeFromLeft (110));
     scListen.setBounds (scToggles.removeFromLeft (90));
+    const int knH = juce::jmin (140, juce::jmax (1, sc.getHeight() / 2));
     const int kw = juce::jmax (1, sc.getWidth() / juce::jmax (1, scKnobs.size()));
     for (int i = 0; i < scKnobs.size(); ++i)
-        scKnobs[i]->setBounds (sc.getX() + i * kw, sc.getY(), kw, juce::jmin (140, sc.getHeight()));
+        scKnobs[i]->setBounds (sc.getX() + i * kw, sc.getY(), kw, knH);
+    sc.removeFromTop (knH);
+    scSpec.setBounds (sc);
 
     const int rowH = juce::jmax (1, r.getHeight() / hkr::numLanes);
     for (int i = 0; i < rows.size(); ++i)
@@ -637,6 +703,8 @@ void HKR5AudioProcessorEditor::timerCallback()
     refreshGrid();
     if (editorPage == 1)
         effectsPage.refresh();
+    if (editorPage == 3)
+        scSpec.repaint();
     // MIDI slot select does not write APVTS; keep combos in sync.
     bankBox.setSelectedItemIndex (proc.currentBank(), juce::dontSendNotification);
     patBox.setSelectedItemIndex (proc.currentPattern(), juce::dontSendNotification);
@@ -693,6 +761,7 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
         row->setVisible (main);
     scOn.setVisible (sc);
     scListen.setVisible (sc);
+    scSpec.setVisible (sc);
     for (auto* k : scKnobs)
         k->setVisible (sc);
     effectsPage.setVisible (fx);

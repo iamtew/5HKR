@@ -7,7 +7,7 @@
 namespace hkr
 {
 
-// Lock-free output spectrum for the EQ page. FFT only when a 2048 hop fills.
+// Lock-free spectrum (EQ output, sidechain key). FFT only when a 2048 hop fills.
 struct EqAnalyser
 {
     static constexpr int fftOrder = 11;
@@ -38,13 +38,16 @@ struct EqAnalyser
         const float* l = buffer.getReadPointer (0);
         const float* r = buffer.getNumChannels() > 1 ? buffer.getReadPointer (1) : l;
         for (int i = 0; i < n; ++i)
+            pushSample (0.5f * (l[i] + r[i]));
+    }
+
+    void pushSample (float x)
+    {
+        fifo[fifoIdx++] = x;
+        if (fifoIdx >= fftSize)
         {
-            fifo[fifoIdx++] = 0.5f * (l[i] + r[i]);
-            if (fifoIdx >= fftSize)
-            {
-                fifoIdx = 0;
-                transform();
-            }
+            fifoIdx = 0;
+            transform();
         }
     }
 
