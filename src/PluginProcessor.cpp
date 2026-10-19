@@ -190,6 +190,13 @@ int HKR5AudioProcessor::cycleStep (int lane, int index)
     return next;
 }
 
+void HKR5AudioProcessor::audition (int lane, bool accent)
+{
+    if (lane < 0 || lane >= hkr::numLanes)
+        return;
+    pendingAudition.store ((lane << 1) | (accent ? 1 : 0), std::memory_order_relaxed);
+}
+
 void HKR5AudioProcessor::setLoop (int lane, int length)
 {
     if (lane < 0 || lane >= hkr::numLanes)
@@ -317,6 +324,9 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const float lpHz = raw (ParamID::scLp);
 
     float lanes[hkr::numLanes];
+    const int packed = pendingAudition.exchange (-1, std::memory_order_relaxed);
+    if (packed >= 0)
+        voices.trigger (packed >> 1, (packed & 1) != 0);
     for (int i = 0; i < n; ++i)
     {
         for (int h = 0; h < nh; ++h)

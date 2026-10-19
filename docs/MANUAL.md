@@ -14,7 +14,7 @@ Click **5HKR** + version in the top left for About.
 
 Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that voice.
 
-- Click a cell: off → on (cyan) → accent (magenta).
+- Click a cell: off → on (cyan) → accent (magenta). On and accent also preview the lane.
 - Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length.
 - **Tune** ±12 st, **Swing** 50–75%, and **FX** 0–100% per lane (how much of that lane goes into the effects chain).
 - **Bank** / **Pat** — 3 banks × 12 patterns.

@@ -154,7 +154,11 @@ void HKR5AudioProcessorEditor::LaneRow::mouseDown (const juce::MouseEvent& e)
         if (e.mods.isPopupMenu())
             editor.proc.toggleLoopEnd (lane, idx);
         else
+        {
             values[i] = editor.proc.cycleStep (lane, idx);
+            if (values[i] > 0)
+                editor.proc.audition (lane, values[i] == 2);
+        }
         editor.refreshGrid();
         return;
     }

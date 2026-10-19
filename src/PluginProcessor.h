@@ -52,6 +52,7 @@ public:
     hkr::SlotData currentSlot() const;
     void setStep (int lane, int index, int value);
     int cycleStep (int lane, int index);
+    void audition (int lane, bool accent);
     void setLoop (int lane, int length);
     void toggleLoopEnd (int lane, int stepIndex);
     void setPatLen (int length);
@@ -119,6 +120,7 @@ private:
     std::atomic<int> curPattern { 0 };
     std::atomic<int> heldKey { -1 };
     std::atomic<int> playheadUi { -1 };
+    std::atomic<int> pendingAudition { -1 }; // packed (lane << 1) | accent, -1 idle
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HKR5AudioProcessor)
 };
