@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 int main()
 {
@@ -89,6 +90,32 @@ int main()
     assert (back[1][0].loop[clave] == 5);
     assert (getStep (back[1][0], clave, 4) == 2);
     assert (getStep (back[0][0], chh, 0) == getStep (slots[0][0], chh, 0));
+
+    // Factory grids are 16 steps of . x X, and no two slots share a groove.
+    {
+        constexpr int nSlots = Sequencer::numBanks * Sequencer::patternsPerBank;
+        SlotData fac[nSlots];
+        for (int k = 0; k < nSlots; ++k)
+        {
+            const auto& f = factoryPats[k / Sequencer::patternsPerBank][k % Sequencer::patternsPerBank];
+            for (int lane = 0; lane < numLanes; ++lane)
+            {
+                assert (std::strlen (f.grid[lane]) == 16);
+                assert (std::strspn (f.grid[lane], ".xX") == 16);
+                assert (f.loop[lane] <= 16);
+            }
+            fillFactory (fac[k], k / Sequencer::patternsPerBank, k % Sequencer::patternsPerBank);
+        }
+        for (int a = 0; a < nSlots; ++a)
+            for (int c = a + 1; c < nSlots; ++c)
+            {
+                const bool same = std::memcmp (fac[a].words, fac[c].words, sizeof (fac[a].words)) == 0
+                                  && std::memcmp (fac[a].loop, fac[c].loop, sizeof (fac[a].loop)) == 0;
+                if (same)
+                    std::printf ("factory slot %d == slot %d\n", a, c);
+                assert (! same);
+            }
+    }
 
     {
         ScFilter f;

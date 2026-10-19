@@ -4,6 +4,8 @@
 
 **5HKR** (Shaker) is a perc groove box: eight synth lanes on a 16th-note grid, pattern banks, per-lane swing and loop length, and a sidechain duck. Hold MIDI C1 for bank 1 pattern 1 (Ableton C0), C2 for bank 2 pattern 1, like TEW03.
 
+36 factory grooves: bank 1 house/techno, bank 2 latin/afro, bank 3 broken/polyrhythmic. Edit them in `factoryPats` in [src/dsp/Sequencer.h](src/dsp/Sequencer.h).
+
 VST3 and standalone. Stupid Systems LLC. [MIT](LICENSE). Docs: [iamtew.github.io/5HKR](https://iamtew.github.io/5HKR/).
 
 ## Release

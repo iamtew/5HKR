@@ -20,6 +20,16 @@ Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that v
 - **Bank** / **Pat** — 3 banks × 12 patterns.
 - **1 / 2 / 4 bar** — 16 / 32 / 64 sixteenths. Extra bars tile the current length. Use the step pager when longer than one bar.
 
+## Factory banks
+
+Every slot starts with its own one-bar groove (**Init Bank** restores them). Pattern 12 in each bank is a fill.
+
+- **Bank 1** — house / techno, straight: offbeat hats, rolling 16ths, shaker-led, tribal, breakdown, peak time.
+- **Bank 2** — latin / afro: son and rumba clave, cascara, mambo bell, bembe, samba, baiao, afrobeat, songo. Add lane swing to taste.
+- **Bank 3** — broken / polyrhythmic: short lane loops (3, 5, 6, 7, 9, 11, 13 steps) that drift against the bar, displaced hats, ghost rims.
+
+Saved sessions and `.5hkrb` banks keep their own patterns.
+
 ## MIDI
 
 Hold C1 for bank 1 pattern 1 (Ableton C0). C2 is bank 2 pattern 1. Mapping starts at MIDI note 24; 36 slots. VST3 follows host BPM; standalone uses the Tempo parameter (120 unless automated).
