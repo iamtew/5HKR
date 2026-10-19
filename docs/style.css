@@ -1,0 +1,137 @@
+:root {
+  --ink: #0f151e;
+  --chassis: #1a2332;
+  --magenta: #ff00ff;
+  --cyan: #00ffff;
+  --metal: #c8d6e5;
+  --white: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--metal);
+  font: 18px/1.5 system-ui, sans-serif;
+}
+
+a { color: var(--cyan); }
+a:hover { color: var(--magenta); }
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 1.2rem;
+  background: var(--chassis);
+  border-bottom: 1px solid #000;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--magenta);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+nav { display: flex; gap: 0.4rem; }
+
+nav a {
+  color: var(--cyan);
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.1rem 0.45rem;
+  border-radius: 2px;
+}
+
+nav a.on {
+  color: var(--ink);
+  background: var(--magenta);
+}
+
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2rem 1.2rem 4rem;
+}
+
+.lead {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+.hero { display: block; flex-shrink: 0; }
+
+figure { margin: 1.2rem 0 0; }
+.shot {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border-radius: 4px;
+  border: 1px solid #000;
+}
+figcaption {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+h1, h2 { color: var(--magenta); margin: 0 0 0.4rem; }
+
+h1 { font-size: 2rem; }
+
+.tag { margin: 0.2rem 0 0; color: var(--cyan); }
+
+.actions { display: flex; align-items: center; gap: 1rem; }
+
+.download {
+  display: inline-block;
+  background: var(--magenta);
+  color: var(--white);
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.35rem 0.9rem;
+  border-radius: 2px;
+}
+
+.download:hover { background: var(--cyan); color: var(--ink); }
+
+.meta { color: var(--metal); opacity: 0.8; }
+
+section { margin-top: 1.6rem; }
+
+.card {
+  background: var(--chassis);
+  border: 1px solid #000;
+  border-radius: 4px;
+  padding: 1rem 1.2rem;
+}
+
+#notes a { display: block; margin: 0.35rem 0; }
+
+strong { color: var(--cyan); }
+
+.md h1, .md h2, .md h3 { color: var(--magenta); margin: 1.2rem 0 0.35rem; }
+.md h1 { margin-top: 0; font-size: 1.7rem; }
+.md h2 { font-size: 1.2rem; }
+.md h3 { font-size: 1.05rem; }
+.md p { margin: 0.45rem 0; }
+.md ul, .md ol { padding-left: 1.25rem; margin: 0.35rem 0; }
+.md li { margin: 0.2rem 0; }
+.md code {
+  background: var(--ink);
+  padding: 0.05rem 0.35rem;
+  border-radius: 2px;
+  font-size: 0.9em;
+}

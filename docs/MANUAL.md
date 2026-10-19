@@ -1,0 +1,38 @@
+# 5HKR manual
+
+Perc groove box. Eight synth lanes, not a sample player. The groove runs while a mapped MIDI key is held.
+
+## Pages
+
+**Main / Sidechain** (title bar) — chevrons or click the name to switch.
+
+Click **5HKR** + version in the top left for About.
+
+**Volume** (title bar, right) — master fader and a peak meter. Clip lights if the output hits 0 dBFS.
+
+## Grid (Main)
+
+Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that voice.
+
+- Click a cell: off → on (cyan) → accent (magenta).
+- Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length.
+- **Tune** ±12 st and **Swing** 50–75% per lane.
+- **Bank** / **Pat** — 3 banks × 12 patterns.
+- **1 / 2 / 4 bar** — 16 / 32 / 64 sixteenths. Extra bars tile the current length. Use the step pager when longer than one bar.
+
+## MIDI
+
+Hold C1 for bank 1 pattern 1 (Ableton C0). C2 is bank 2 pattern 1. Mapping starts at MIDI note 24; 36 slots. VST3 follows host BPM; standalone uses the Tempo parameter (120 unless automated).
+
+## Library
+
+**Init Patch** / **Init Bank** in the title bar: chevrons step the list; click for Init / Save / Save As / Export / Import.
+
+- Patches (`.5hkrp`) — knobs. `%AppData%\Stupid Systems LLC\5HKR\Patches`
+- Banks (`.5hkrb`) — patterns. `%AppData%\Stupid Systems LLC\5HKR\Banks`
+
+## Sidechain
+
+Ducks the mixed lanes from the plugin audio input (standalone mutes that input to avoid feedback). **Sidechain** toggle, then Thresh, Amount, Attack, Release, Mix.
+
+Drag the window corner to scale; the scale is saved with the session.
