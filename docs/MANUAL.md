@@ -17,6 +17,7 @@ Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that v
 - Click a cell: off → on (cyan) → accent (magenta). On and accent also preview the lane.
 - Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length.
 - **Tune** ±12 st, **Swing** 50–75%, and **FX** 0–100% per lane (how much of that lane goes into the effects chain).
+- **Edit** on a lane opens that sound: left column picks the lane, waveform plus Kit / Tune / Decay / Click / Drive / HPF / Tone / Level offset the kit spec (50% is the stock sound). A magenta line on the waveform follows the hit while it plays. **Grid** returns to the sequencer.
 - **Bank** / **Pat** — 3 banks × 12 patterns.
 - **1 / 2 / 4 bar** — 16 / 32 / 64 sixteenths. Extra bars tile the current length. Use the step pager when longer than one bar.
 - **Random** / **Clear** — fill or wipe every step of the current pattern. Loops, length, and knobs stay.
