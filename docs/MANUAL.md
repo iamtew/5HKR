@@ -17,7 +17,7 @@ Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that v
 - Click a cell: off → on (cyan) → accent (magenta). On and accent also preview the lane.
 - Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length.
 - **Tune** ±12 st, **Swing** 50–75%, and **FX** 0–100% per lane (how much of that lane goes into the effects chain).
-- **Edit** on a lane opens that sound. The lane names, kit menus and Edit buttons stay put on the left; Edit on another lane switches sound, Edit on the same lane goes back to the grid. Tune / Decay / Click / Drive / HPF / Tone / Level offset the kit spec (50% is the stock sound). A magenta line on the waveform follows the hit while it plays.
+- **Edit** on a lane opens that sound. The lane names, kit menus and Edit buttons stay put on the left; Edit on another lane switches sound, Edit on the same lane goes back to the grid. Tune / Decay / Click / Drive / HPF / Tone / Level offset the kit spec (50% is the stock sound). A magenta line on the waveform follows the hit while it plays. The mixer strip for that lane sits on the right.
 - **Bank** / **Pat** — 3 banks × 12 patterns.
 - **1 / 2 / 4 bar** — 16 / 32 / 64 sixteenths. Extra bars tile the current length. Use the step pager when longer than one bar.
 - **Random** / **Clear** — fill or wipe every step of the current pattern. Loops, length, and knobs stay.
@@ -25,6 +25,8 @@ Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that v
 ## Mixer
 
 One strip per lane. **Gain** is trim (±12 dB). **High / Mid / Low** is a 3-band EQ (not the post EQ page). **Filter** is a DJ filter: left high-pass, centre off, right low-pass. **Pan** is constant-power. The speaker is the same mute as the lane name on Main (no new hits; ringing tails keep going). **S** solos that lane. The fader cap sets channel level; the thin bar behind it is that lane's meter (Edit **Level** still shapes the synth). Master volume stays in the title bar.
+
+If the DAW shows extra plugin outputs, buses **CHH** … **Rim** are that strip after pan (no master volume, no FX / post EQ / duck). The main **Output** is still the full mix. A lane with FX send at 100% is wet-only on the master and still dry on its own bus.
 
 ## Factory banks
 

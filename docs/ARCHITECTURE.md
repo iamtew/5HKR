@@ -10,6 +10,7 @@ Audio thread:
 4. LaneMixer: per-lane trim, 3-band EQ, DJ filter, fader, solo mask, constant-power pan (stereo)
 5. Per-lane FX send splits that processed lane dry vs send bus; send goes through the global FxChain (chorus, delay, flanger, phaser, reverb)
 6. Dry + FX, then 5-band post EQ, then HP/LP on the input bus (always, for the key spectrum) into Ducker when on (full mix including FX tails). Listen replaces the output with that filtered key, then EqAnalyser + OutputMeter
+7. Optional extra stereo output buses (one per lane, named from `laneNames`) copy the post-strip panned lane before the send split. Disabled unless the host enables them. FX / post EQ / duck stay on bus 0.
 
 Message thread:
 

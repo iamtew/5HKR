@@ -7,7 +7,7 @@
 - Swing delays odd 16ths: 0.5 = straight, 0.75 = half a step late.
 - Per-lane loop wraps that lane against the pattern length (clave-in-5 against 16, etc.).
 - Ducker: one-pole HP then LP on the input, envelope follower on that abs, gain `1 / (1 + amount * over * 12)` above thresh. Attack / release in ms. Listen replaces the output with the filtered key. Duck runs after FX + post EQ. Sidechain page FFT is that same filtered key.
-- Lane mixer (before send split): trim dB, low-shelf 250 / peak 1k / high-shelf 4k, bipolar DJ filter, fader 0–1, constant-power pan, solo mask. Mute is still sequencer `laneOn`. Lane meters are post-fader peak, held ~400 ms, drawn -48..0 dBFS.
+- Lane mixer (before send split): trim dB, low-shelf 250 / peak 1k / high-shelf 4k, bipolar DJ filter, fader 0–1, constant-power pan, solo mask. Mute is still sequencer `laneOn`. Lane meters are post-fader peak, held ~400 ms, drawn -48..0 dBFS. Optional extra outs (buses 1–8) are that same post-strip stereo, no master Volume / FX / post EQ / duck.
 - Master meter is max(|L|, |R|) after FX, post EQ and duck, same hold and scale. Clip is a sample at 0 dBFS.
 - Lane FX send: dry = lane * (1 - send), send bus = lane * send. One global chain (JUCE Chorus / DelayLine+LP / Chorus-as-flanger / Phaser / Reverb). Order is packed `FX_ORDER` on APVTS state.
 - Post EQ: 5 biquads (off/peak/shelves/HP/LP), same math as K1X. Spectrum FFT hop 2048 after the EQ. Same analyser type on the sidechain key.
