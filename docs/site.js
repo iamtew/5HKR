@@ -1,6 +1,10 @@
 const links = [...document.querySelectorAll("nav a")];
 const sections = links
-  .map((a) => document.querySelector(a.getAttribute("href")))
+  .map((a) => {
+    const href = a.getAttribute("href") || "";
+    const hash = href.includes("#") ? href.slice(href.indexOf("#")) : "";
+    return hash.length > 1 ? document.querySelector(hash) : null;
+  })
   .filter(Boolean);
 
 const watch = new IntersectionObserver((entries) => {
