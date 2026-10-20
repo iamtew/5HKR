@@ -60,7 +60,15 @@ void stripPatchExtras (juce::ValueTree& t)
 HKR5AudioProcessor::HKR5AudioProcessor()
     : AudioProcessor (BusesProperties()
                           .withInput ("Sidechain", juce::AudioChannelSet::stereo(), true)
-                          .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+                          .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                          .withOutput (hkr::laneNames[hkr::chh], juce::AudioChannelSet::stereo(), false)
+                          .withOutput (hkr::laneNames[hkr::ohh], juce::AudioChannelSet::stereo(), false)
+                          .withOutput (hkr::laneNames[hkr::crash], juce::AudioChannelSet::stereo(), false)
+                          .withOutput (hkr::laneNames[hkr::cymbal], juce::AudioChannelSet::stereo(), false)
+                          .withOutput (hkr::laneNames[hkr::shaker], juce::AudioChannelSet::stereo(), false)
+                          .withOutput (hkr::laneNames[hkr::clave], juce::AudioChannelSet::stereo(), false)
+                          .withOutput (hkr::laneNames[hkr::cowbell], juce::AudioChannelSet::stereo(), false)
+                          .withOutput (hkr::laneNames[hkr::rim], juce::AudioChannelSet::stereo(), false)),
       apvts (*this, nullptr, "PARAMS", createParameterLayout())
 {
     for (int b = 0; b < hkr::Sequencer::numBanks; ++b)
@@ -113,7 +121,8 @@ void HKR5AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     ducker.prepare (sampleRate);
     scFiltL.prepare (sampleRate);
     scFiltR.prepare (sampleRate);
-    const int ch = juce::jmax (2, getTotalNumOutputChannels());
+    // Master mix + FX send stay stereo even when the host enables lane buses.
+    const int ch = 2;
     const int n = juce::jmax (samplesPerBlock, 64);
     sendBuf.setSize (ch, n);
     fx.prepare (sampleRate, n, ch);
@@ -130,8 +139,20 @@ bool HKR5AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
     if (out != juce::AudioChannelSet::stereo() && out != juce::AudioChannelSet::mono())
         return false;
     const auto in = layouts.getMainInputChannelSet();
-    return in.isDisabled() || in == juce::AudioChannelSet::stereo()
-        || in == juce::AudioChannelSet::mono();
+    if (! (in.isDisabled() || in == juce::AudioChannelSet::stereo()
+           || in == juce::AudioChannelSet::mono()))
+        return false;
+    for (int i = 1; i < layouts.outputBuses.size(); ++i)
+    {
+        const auto& s = layouts.outputBuses.getReference (i);
+        if (! s.isDisabled() && s != juce::AudioChannelSet::stereo()
+            && s != juce::AudioChannelSet::mono())
+            return false;
+    }
+    for (int i = 1; i < layouts.inputBuses.size(); ++i)
+        if (! layouts.inputBuses.getReference (i).isDisabled())
+            return false;
+    return true;
 }
 
 float HKR5AudioProcessor::raw (const char* id) const
@@ -366,6 +387,23 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     }
     out.clear();
 
+    float* laneL[hkr::numLanes] {};
+    float* laneR[hkr::numLanes] {};
+    const int nOutBuses = getBusCount (false);
+    for (int ln = 0; ln < hkr::numLanes; ++ln)
+    {
+        const int bus = 1 + ln;
+        if (bus >= nOutBuses || getChannelCountOfBus (false, bus) <= 0)
+            continue;
+        auto aux = getBusBuffer (buffer, false, bus);
+        aux.clear();
+        if (aux.getNumSamples() > 0 && aux.getNumChannels() > 0)
+        {
+            laneL[ln] = aux.getWritePointer (0);
+            laneR[ln] = aux.getNumChannels() > 1 ? aux.getWritePointer (1) : nullptr;
+        }
+    }
+
     hkr::SlotData slot;
     snapSlot (currentBank(), currentPattern(), slot);
 
@@ -396,9 +434,10 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const int nh = sequencer.advance (slot, n, tempoBpm(), run, swing, enabled, hits, 64);
     playheadUi.store (sequencer.playhead(), std::memory_order_relaxed);
 
-    // ponytail: grow only if host exceeds prepare size
-    if (sendBuf.getNumSamples() < n || sendBuf.getNumChannels() < out.getNumChannels())
-        sendBuf.setSize (juce::jmax (out.getNumChannels(), sendBuf.getNumChannels()),
+    // ponytail: grow only if host exceeds prepare size. Cap at 2 — FX is master-only.
+    const int mixCh = juce::jlimit (1, 2, out.getNumChannels());
+    if (sendBuf.getNumSamples() < n || sendBuf.getNumChannels() < mixCh)
+        sendBuf.setSize (juce::jmax (mixCh, sendBuf.getNumChannels()),
                          juce::jmax (n, sendBuf.getNumSamples()), false, false, true);
     sendBuf.clear();
 
@@ -441,6 +480,18 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
                 peak[ln] = ax;
             const float gL = laneMixer.strip[ln].panL;
             const float gR = laneMixer.strip[ln].panR;
+            if (laneL[ln] != nullptr)
+            {
+                const float yL = x * gL;
+                const float yR = x * gR;
+                if (laneR[ln] != nullptr)
+                {
+                    laneL[ln][i] = yL;
+                    laneR[ln][i] = yR;
+                }
+                else
+                    laneL[ln][i] = 0.5f * (yL + yR);
+            }
             const float d = 1.f - sendAmt[ln];
             const float s = sendAmt[ln];
             dryL += x * d * gL;
