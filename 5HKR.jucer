@@ -25,10 +25,12 @@
         <FILE id="eqbH001" name="EqBiquad.h" compile="0" resource="0" file="src/dsp/EqBiquad.h"/>
         <FILE id="peqH001" name="ParametricEq.h" compile="0" resource="0" file="src/dsp/ParametricEq.h"/>
         <FILE id="eqaH001" name="EqAnalyser.h" compile="0" resource="0" file="src/dsp/EqAnalyser.h"/>
+        <FILE id="mixH001" name="Mixer.h" compile="0" resource="0" file="src/dsp/Mixer.h"/>
       </GROUP>
       <GROUP id="uiGrp01" name="ui">
         <FILE id="efxH001" name="EffectsPage.h" compile="0" resource="0" file="src/ui/EffectsPage.h"/>
         <FILE id="eqpH001" name="EqPage.h" compile="0" resource="0" file="src/ui/EqPage.h"/>
+        <FILE id="mixP001" name="MixerPage.h" compile="0" resource="0" file="src/ui/MixerPage.h"/>
       </GROUP>
       <GROUP id="prmGrp01" name="parameters">
         <FILE id="pidH001" name="ParameterIDs.h" compile="0" resource="0" file="src/parameters/ParameterIDs.h"/>

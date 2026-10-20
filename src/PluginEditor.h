@@ -3,6 +3,7 @@
 #include "PluginProcessor.h"
 #include "ui/EffectsPage.h"
 #include "ui/EqPage.h"
+#include "ui/MixerPage.h"
 
 #include <functional>
 #include <vector>
@@ -176,6 +177,7 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> bankAtt, patAtt;
     juce::OwnedArray<LaneRow> rows;
     juce::OwnedArray<Knob> scKnobs;
+    MixerPage mixerPage;
     EffectsPage effectsPage;
     EqPage eqPage;
     juce::ToggleButton scOn { "Sidechain" };

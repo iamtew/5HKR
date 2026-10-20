@@ -109,6 +109,7 @@ void HKR5AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     sequencer.prepare (sampleRate);
     voices.prepare (sampleRate);
+    laneMixer.prepare (sampleRate);
     ducker.prepare (sampleRate);
     scFiltL.prepare (sampleRate);
     scFiltR.prepare (sampleRate);
@@ -119,6 +120,8 @@ void HKR5AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     postEq.prepare (sampleRate, n, ch);
     analyser.prepare (sampleRate);
     scSpec.prepare (sampleRate);
+    meter.prepare (sampleRate);
+    laneMeters.prepare (sampleRate);
 }
 
 bool HKR5AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -176,6 +179,13 @@ float HKR5AudioProcessor::voiceAgeSec (int lane) const
     if (lane < 0 || lane >= hkr::numLanes)
         return 0.f;
     return uiAgeSec[lane].load (std::memory_order_relaxed);
+}
+
+float HKR5AudioProcessor::lanePeak (int lane) const
+{
+    if (lane < 0 || lane >= hkr::numLanes)
+        return 0.f;
+    return laneMeters.last (lane);
 }
 
 void HKR5AudioProcessor::renderLaneShot (int lane, float* dest, int n, double sampleRate)
@@ -361,14 +371,24 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
     float swing[hkr::numLanes];
     float sendAmt[hkr::numLanes];
+    bool solo[hkr::numLanes];
     uint8_t enabled = 0;
     for (int i = 0; i < hkr::numLanes; ++i)
     {
         swing[i] = raw (ParamID::laneSwing[i]);
         sendAmt[i] = raw (ParamID::laneSend[i]);
+        solo[i] = raw (ParamID::laneSolo[i]) >= 0.5f;
         if (raw (ParamID::laneOn[i]) >= 0.5f)
             enabled = (uint8_t) (enabled | (1u << i));
+        laneMixer.strip[i].set (raw (ParamID::laneMixGain[i]),
+                                raw (ParamID::laneEqLo[i]),
+                                raw (ParamID::laneEqMid[i]),
+                                raw (ParamID::laneEqHi[i]),
+                                raw (ParamID::laneFilter[i]),
+                                raw (ParamID::laneFader[i]),
+                                raw (ParamID::lanePan[i]));
     }
+    const std::uint8_t soloMask = hkr::mixerSoloMask (solo);
     applyVoiceParams (voices);
 
     hkr::Hit hits[64];
@@ -400,6 +420,7 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const float lpHz = raw (ParamID::scLp);
 
     float lanes[hkr::numLanes];
+    float peak[hkr::numLanes] {};
     const int packed = pendingAudition.exchange (-1, std::memory_order_relaxed);
     if (packed >= 0)
         voices.trigger (packed >> 1, (packed & 1) != 0);
@@ -409,20 +430,42 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             if (hits[h].offset == i)
                 voices.trigger (hits[h].lane, hits[h].accent);
         voices.process (lanes);
-        float dry = 0.f, snd = 0.f;
+        float dryL = 0.f, dryR = 0.f, sndL = 0.f, sndR = 0.f;
         for (int ln = 0; ln < hkr::numLanes; ++ln)
         {
-            dry += lanes[ln] * (1.f - sendAmt[ln]);
-            snd += lanes[ln] * sendAmt[ln];
+            float x = laneMixer.strip[ln].process (lanes[ln]);
+            if ((soloMask & (std::uint8_t) (1u << ln)) == 0)
+                x = 0.f;
+            const float ax = std::fabs (x);
+            if (ax > peak[ln])
+                peak[ln] = ax;
+            const float gL = laneMixer.strip[ln].panL;
+            const float gR = laneMixer.strip[ln].panR;
+            const float d = 1.f - sendAmt[ln];
+            const float s = sendAmt[ln];
+            dryL += x * d * gL;
+            dryR += x * d * gR;
+            sndL += x * s * gL;
+            sndR += x * s * gR;
         }
-        dry *= vol;
-        snd *= vol;
-        l[i] = dry;
-        sL[i] = snd;
+        dryL *= vol;
+        dryR *= vol;
+        sndL *= vol;
+        sndR *= vol;
         if (r != nullptr)
-            r[i] = dry;
+        {
+            l[i] = dryL;
+            r[i] = dryR;
+        }
+        else
+            l[i] = 0.5f * (dryL + dryR);
         if (sR != nullptr)
-            sR[i] = snd;
+        {
+            sL[i] = sndL;
+            sR[i] = sndR;
+        }
+        else
+            sL[i] = 0.5f * (sndL + sndR);
     }
 
     const float invSr = 1.f / (float) (getSampleRate() > 1.0 ? getSampleRate() : 44100.0);
@@ -432,6 +475,7 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         uiAgeSec[ln].store ((float) voices.samplesSinceTrigger (ln) * invSr,
                             std::memory_order_relaxed);
     }
+    laneMeters.pushBlock (peak, n);
 
     auto sendView = juce::AudioBuffer<float> (sendBuf.getArrayOfWritePointers(),
                                               out.getNumChannels(), n);

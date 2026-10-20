@@ -1,4 +1,6 @@
 #include "dsp/EqBiquad.h"
+#include "dsp/Meter.h"
+#include "dsp/Mixer.h"
 #include "dsp/Sequencer.h"
 #include "dsp/Voices.h"
 #include "parameters/Library.h"
@@ -272,6 +274,51 @@ int main()
         const float w = 2.f * 3.14159265f * 1000.f / 44100.f;
         const float mag = hkr::eqBiquadMag (peak, w);
         assert (mag > 1.8f && mag < 2.2f);
+    }
+
+    {
+        assert (mixerFilterBypass (0.f));
+        assert (! mixerFilterBypass (0.5f));
+        const float hp = mixerFilterHz (-1.f, 44100.f);
+        const float lp = mixerFilterHz (1.f, 44100.f);
+        const float midHp = mixerFilterHz (-0.5f, 44100.f);
+        assert (hp > 8000.f);
+        assert (lp < 40.f);
+        assert (midHp > 200.f && midHp < hp);
+
+        float cL = 0.f, cR = 0.f, lL = 0.f, lR = 0.f, rL = 0.f, rR = 0.f;
+        mixerPanGains (0.f, cL, cR);
+        mixerPanGains (-1.f, lL, lR);
+        mixerPanGains (1.f, rL, rR);
+        assert (meterToPos (1.f) > 0.99f);
+        assert (meterToPos (0.1f) > 0.55f && meterToPos (0.1f) < 0.65f);
+        assert (meterToPos (0.f) == 0.f);
+        assert (meterRelease (1.f, 44100, 44100.0) < 0.15f);
+        assert (meterRelease (1.f, 64, 44100.0) > 0.95f);
+
+        assert (std::abs (cL - cR) < 1e-5f);
+        assert (lL > 0.99f && lR < 0.01f);
+        assert (rR > 0.99f && rL < 0.01f);
+
+        bool none[numLanes] {};
+        bool one[numLanes] {};
+        one[chh] = true;
+        one[rim] = true;
+        assert (mixerSoloMask (none) == 0xff);
+        assert (mixerSoloMask (one) == (std::uint8_t) ((1u << chh) | (1u << rim)));
+
+        ChannelStrip s;
+        s.prepare (44100.0);
+        s.set (0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f);
+        float acc = 0.f;
+        for (int i = 0; i < 64; ++i)
+            acc += s.process (1.f);
+        assert (acc > 30.f);
+        s.set (0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f);
+        acc = 0.f;
+        for (int i = 0; i < 64; ++i)
+            acc += std::fabs (s.process (1.f));
+        assert (acc < 1e-4f);
     }
 
     std::puts ("groove_check ok");

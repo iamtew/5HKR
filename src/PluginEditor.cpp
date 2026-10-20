@@ -6,8 +6,8 @@ namespace
 {
 constexpr int kEditorW = 980;
 constexpr int kEditorH = 560;
-constexpr const char* kPageNames[] = { "Main", "Effects", "EQ", "Sidechain" };
-constexpr int kPageCount = 4;
+constexpr const char* kPageNames[] = { "Main", "Mixer", "Effects", "EQ", "Sidechain" };
+constexpr int kPageCount = 5;
 constexpr int kPad = 8;
 constexpr int kTitleH = 40;
 constexpr int kTitleHitW = 150;
@@ -350,7 +350,7 @@ void HKR5AudioProcessorEditor::VolumeStrip::paint (juce::Graphics& g)
     g.setColour (clipped ? kMagenta : kCyan.withAlpha (0.7f));
     g.fillRoundedRectangle (fill, 3.f);
 
-    const float peak = juce::jlimit (0.f, 1.f, editor.proc.outputMeter().lastPeak());
+    const float peak = hkr::meterToPos (editor.proc.outputMeter().lastPeak());
     auto pfill = meter.withWidth (juce::jmax (2.f, meter.getWidth() * peak));
     g.setColour (clipped ? kMagenta : kCyan);
     g.fillRoundedRectangle (pfill, 3.f);
@@ -508,7 +508,7 @@ void HKR5AudioProcessorEditor::ScSpec::paint (juce::Graphics& g)
 }
 
 HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
-    : juce::AudioProcessorEditor (p), proc (p), effectsPage (p), eqPage (p)
+    : juce::AudioProcessorEditor (p), proc (p), mixerPage (p), effectsPage (p), eqPage (p)
 {
     setLookAndFeel (&panelLnF);
     setOpaque (true);
@@ -638,8 +638,10 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
     }
     content.addAndMakeVisible (scSpec);
 
+    content.addChildComponent (mixerPage);
     content.addChildComponent (effectsPage);
     content.addChildComponent (eqPage);
+    mixerPage.setVisible (false);
     effectsPage.setVisible (false);
     eqPage.setVisible (false);
 
@@ -759,6 +761,7 @@ void HKR5AudioProcessorEditor::layoutContent()
     sc.removeFromTop (knH);
     scSpec.setBounds (sc);
 
+    mixerPage.setBounds (r);
     effectsPage.setBounds (r);
     eqPage.setBounds (r);
 
@@ -785,9 +788,9 @@ void HKR5AudioProcessorEditor::timerCallback()
     volumeStrip.refresh();
     refreshBars();
     refreshGrid();
-    if (editorPage == 1)
+    if (editorPage == 2)
         effectsPage.refresh();
-    if (editorPage == 3)
+    if (editorPage == 4)
         scSpec.repaint();
     // MIDI slot select does not write APVTS; keep combos in sync.
     bankBox.setSelectedItemIndex (proc.currentBank(), juce::dontSendNotification);
@@ -837,9 +840,10 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     const bool main = editorPage == 0;
     const bool editing = main && editLane >= 0;
     const bool grid = main && ! editing;
-    const bool fx = editorPage == 1;
-    const bool eq = editorPage == 2;
-    const bool sc = editorPage == 3;
+    const bool mix = editorPage == 1;
+    const bool fx = editorPage == 2;
+    const bool eq = editorPage == 3;
+    const bool sc = editorPage == 4;
     bankBox.setVisible (main);
     patBox.setVisible (main);
     lenBox.setVisible (grid);
@@ -870,6 +874,7 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     scSpec.setVisible (sc);
     for (auto* k : scKnobs)
         k->setVisible (sc);
+    mixerPage.setVisible (mix);
     effectsPage.setVisible (fx);
     eqPage.setVisible (eq);
     if (fx)

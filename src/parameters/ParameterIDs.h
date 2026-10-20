@@ -66,6 +66,38 @@ inline constexpr const char* laneDrive[hkr::numLanes] = {
     "laneDrive0", "laneDrive1", "laneDrive2", "laneDrive3",
     "laneDrive4", "laneDrive5", "laneDrive6", "laneDrive7"
 };
+inline constexpr const char* laneMixGain[hkr::numLanes] = {
+    "laneMixGain0", "laneMixGain1", "laneMixGain2", "laneMixGain3",
+    "laneMixGain4", "laneMixGain5", "laneMixGain6", "laneMixGain7"
+};
+inline constexpr const char* laneEqHi[hkr::numLanes] = {
+    "laneEqHi0", "laneEqHi1", "laneEqHi2", "laneEqHi3",
+    "laneEqHi4", "laneEqHi5", "laneEqHi6", "laneEqHi7"
+};
+inline constexpr const char* laneEqMid[hkr::numLanes] = {
+    "laneEqMid0", "laneEqMid1", "laneEqMid2", "laneEqMid3",
+    "laneEqMid4", "laneEqMid5", "laneEqMid6", "laneEqMid7"
+};
+inline constexpr const char* laneEqLo[hkr::numLanes] = {
+    "laneEqLo0", "laneEqLo1", "laneEqLo2", "laneEqLo3",
+    "laneEqLo4", "laneEqLo5", "laneEqLo6", "laneEqLo7"
+};
+inline constexpr const char* laneFilter[hkr::numLanes] = {
+    "laneFilter0", "laneFilter1", "laneFilter2", "laneFilter3",
+    "laneFilter4", "laneFilter5", "laneFilter6", "laneFilter7"
+};
+inline constexpr const char* lanePan[hkr::numLanes] = {
+    "lanePan0", "lanePan1", "lanePan2", "lanePan3",
+    "lanePan4", "lanePan5", "lanePan6", "lanePan7"
+};
+inline constexpr const char* laneSolo[hkr::numLanes] = {
+    "laneSolo0", "laneSolo1", "laneSolo2", "laneSolo3",
+    "laneSolo4", "laneSolo5", "laneSolo6", "laneSolo7"
+};
+inline constexpr const char* laneFader[hkr::numLanes] = {
+    "laneFader0", "laneFader1", "laneFader2", "laneFader3",
+    "laneFader4", "laneFader5", "laneFader6", "laneFader7"
+};
 
 inline constexpr int fxCount = 5;
 inline constexpr const char* fxNames[fxCount] = {

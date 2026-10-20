@@ -67,6 +67,9 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 
     auto swingR = NormalisableRange<float> (0.5f, 0.75f, 0.001f);
     auto tuneR = NormalisableRange<float> (-12.f, 12.f, 0.01f);
+    auto mixDb = NormalisableRange<float> (-12.f, 12.f, 0.01f);
+    auto filtR = NormalisableRange<float> (-1.f, 1.f, 0.001f);
+    auto panR = NormalisableRange<float> (-1.f, 1.f, 0.001f);
     StringArray kits;
     for (int i = 0; i < hkr::numKits; ++i)
         kits.add (hkr::kitNames[i]);
@@ -105,6 +108,23 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         layout.add (std::make_unique<AudioParameterFloat> (
             ParameterID { ParamID::laneDrive[i], 1 },
             String (hkr::laneNames[i]) + " Drive", unit, 0.f, pct (unit)));
+        const auto n = String (hkr::laneNames[i]);
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneMixGain[i], 1 }, n + " Gain", mixDb, 0.f));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneEqHi[i], 1 }, n + " High", mixDb, 0.f));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneEqMid[i], 1 }, n + " Mid", mixDb, 0.f));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneEqLo[i], 1 }, n + " Low", mixDb, 0.f));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneFilter[i], 1 }, n + " Filter", filtR, 0.f));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::lanePan[i], 1 }, n + " Pan", panR, 0.f));
+        layout.add (std::make_unique<AudioParameterBool> (
+            ParameterID { ParamID::laneSolo[i], 1 }, n + " Solo", false));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneFader[i], 1 }, n + " Fader", unit, 1.f, pct (unit)));
     }
 
     auto addOn = [&] (const char* id, const char* name)

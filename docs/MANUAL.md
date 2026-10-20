@@ -4,11 +4,11 @@ Perc groove box. Eight synth lanes, not a sample player. The groove runs while a
 
 ## Pages
 
-**Main / Effects / EQ / Sidechain** (title bar) — chevrons or click the name to switch.
+**Main / Mixer / Effects / EQ / Sidechain** (title bar) — chevrons or click the name to switch.
 
 Click **5HKR** + version in the top left for About.
 
-**Volume** (title bar, right) — master fader and a peak meter. Clip lights if the output hits 0 dBFS.
+**Volume** (title bar, right) — master fader and a peak meter (-48 dB to 0 dB, holds the hit). Clip lights if the output hits 0 dBFS.
 
 ## Grid (Main)
 
@@ -21,6 +21,10 @@ Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that v
 - **Bank** / **Pat** — 3 banks × 12 patterns.
 - **1 / 2 / 4 bar** — 16 / 32 / 64 sixteenths. Extra bars tile the current length. Use the step pager when longer than one bar.
 - **Random** / **Clear** — fill or wipe every step of the current pattern. Loops, length, and knobs stay.
+
+## Mixer
+
+One strip per lane. **Gain** is trim (±12 dB). **High / Mid / Low** is a 3-band EQ (not the post EQ page). **Filter** is a DJ filter: left high-pass, centre off, right low-pass. **Pan** is constant-power. The speaker is the same mute as the lane name on Main (no new hits; ringing tails keep going). **S** solos that lane. The fader cap sets channel level; the thin bar behind it is that lane's meter (Edit **Level** still shapes the synth). Master volume stays in the title bar.
 
 ## Factory banks
 

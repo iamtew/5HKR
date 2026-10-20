@@ -3,6 +3,7 @@
 #include "dsp/EqAnalyser.h"
 #include "dsp/FxChain.h"
 #include "dsp/Meter.h"
+#include "dsp/Mixer.h"
 #include "dsp/ParametricEq.h"
 #include "dsp/Sequencer.h"
 #include "dsp/Voices.h"
@@ -61,6 +62,7 @@ public:
     void renderLaneShot (int lane, float* dest, int n, double sampleRate);
     float voiceEnv (int lane) const;
     float voiceAgeSec (int lane) const;
+    float lanePeak (int lane) const;
 
     hkr::OutputMeter& outputMeter() { return meter; }
     hkr::EqAnalyser& eqAnalyser() { return analyser; }
@@ -110,6 +112,7 @@ private:
 
     hkr::Sequencer sequencer;
     hkr::Voices voices;
+    hkr::LaneMixer laneMixer;
     hkr::FxChain fx;
     hkr::ParametricEq postEq;
     hkr::EqAnalyser analyser;
@@ -131,6 +134,7 @@ private:
     std::atomic<int> pendingAudition { -1 }; // packed (lane << 1) | accent, -1 idle
     std::atomic<float> uiEnv[hkr::numLanes] {};
     std::atomic<float> uiAgeSec[hkr::numLanes] {};
+    hkr::LaneMeters laneMeters;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HKR5AudioProcessor)
 };
