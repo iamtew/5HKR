@@ -16,6 +16,39 @@ body {
   font: 18px/1.5 system-ui, sans-serif;
 }
 
+#fx {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.smile {
+  position: absolute;
+  left: var(--x);
+  bottom: -12vmin;
+  width: var(--s);
+  height: var(--s);
+  filter: blur(var(--b));
+  animation:
+    fly var(--t) linear var(--d) infinite,
+    blink var(--k) ease-in-out infinite;
+}
+
+@keyframes fly {
+  to { transform: translateY(-120vh) rotate(var(--turn)); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0.06; }
+  50% { opacity: 0.42; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #fx { display: none; }
+}
+
 a { color: var(--cyan); }
 a:hover { color: var(--magenta); }
 
