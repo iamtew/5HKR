@@ -64,7 +64,7 @@ HKR5AudioProcessorEditor::Knob::Knob (juce::AudioProcessorValueTreeState& st,
 void HKR5AudioProcessorEditor::Knob::resized()
 {
     auto r = getLocalBounds();
-    label.setBounds (r.removeFromTop (kLabelH));
+    label.setBounds (r.removeFromTop (labelH));
     slider.setBounds (r);
 }
 
@@ -80,7 +80,13 @@ HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln
     kitAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
         ed.proc.apvts, ParamID::laneKit[ln], kitBox);
     addAndMakeVisible (kitBox);
-    editBtn.onClick = [this] { editor.openSoundEdit (lane); };
+    editBtn.onClick = [this]
+    {
+        if (editor.editLane == lane)
+            editor.leaveSoundEdit();
+        else
+            editor.openSoundEdit (lane);
+    };
     addAndMakeVisible (editBtn);
 
     auto setupKnob = [this] (juce::Slider& s, juce::Label& lab)
@@ -125,6 +131,16 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
     onBtn.setBounds (drum.removeFromTop (drum.getHeight() / 2));
     kitBox.setBounds (drum);
     editBtn.setBounds (r.removeFromLeft (44).reduced (2, 6));
+    for (juce::Component* c : { (juce::Component*) &tune, (juce::Component*) &tuneLabel,
+                                (juce::Component*) &swing, (juce::Component*) &swingLabel,
+                                (juce::Component*) &send, (juce::Component*) &sendLabel })
+        c->setVisible (! compact);
+    if (compact)
+    {
+        for (auto& c : cells)
+            c = {};
+        return;
+    }
     auto place = [] (juce::Slider& s, juce::Label& lab, juce::Rectangle<int> col)
     {
         lab.setBounds (col.removeFromBottom (12));
@@ -140,6 +156,8 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
 
 void HKR5AudioProcessorEditor::LaneRow::paint (juce::Graphics& g)
 {
+    if (compact)
+        return;
     for (int i = 0; i < 16; ++i)
     {
         auto c = cells[i].toFloat();
@@ -170,6 +188,8 @@ void HKR5AudioProcessorEditor::LaneRow::paint (juce::Graphics& g)
 
 void HKR5AudioProcessorEditor::LaneRow::mouseDown (const juce::MouseEvent& e)
 {
+    if (compact)
+        return;
     for (int i = 0; i < 16; ++i)
     {
         if (! cells[i].contains (e.getPosition()))
@@ -585,30 +605,15 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
     }
 
     content.addChildComponent (wave);
-    gridBtn.onClick = [this] { leaveSoundEdit(); };
-    content.addChildComponent (gridBtn);
-    for (int i = 0; i < hkr::numLanes; ++i)
-    {
-        lanePick[i].setButtonText (hkr::laneNames[i]);
-        lanePick[i].onClick = [this, i]
-        {
-            openSoundEdit (i);
-        };
-        content.addChildComponent (lanePick[i]);
-    }
-    editKitLabel.setText ("Kit", juce::dontSendNotification);
-    editKitLabel.setJustificationType (juce::Justification::centred);
-    editKitLabel.setColour (juce::Label::textColourId, kCyan);
-    content.addChildComponent (editKitLabel);
-    for (int i = 0; i < hkr::numKits; ++i)
-        editKitBox.addItem (hkr::kitNames[i], i + 1);
-    content.addChildComponent (editKitBox);
     static constexpr const char* kEditNames[] = {
         "Tune", "Decay", "Click", "Drive", "HPF", "Tone", "Level"
     };
     for (auto* name : kEditNames)
     {
         auto* k = editKnobs.add (new Knob (name));
+        k->labelH = 16;
+        k->label.setFont (boldFont (12.f));
+        k->slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 70, 16);
         content.addChildComponent (k);
     }
     listenLaneParams (true);
@@ -709,43 +714,38 @@ void HKR5AudioProcessorEditor::layoutContent()
     bankBar.setBounds (title.reduced (6, 2));
 
     const bool editing = editorPage == 0 && editLane >= 0;
-    if (! editing)
+    // Tools strip stays reserved in edit mode so the lane column does not jump.
+    auto tools = r.removeFromTop (28);
+    bankBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
+    patBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
+    clearBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
+    randomBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
+    auto mid = tools.withSizeKeepingCentre (90 + 28 + 72 + 28, tools.getHeight());
+    lenBox.setBounds (mid.removeFromLeft (90).reduced (2, 2));
+    pageLeft.setBounds (mid.removeFromLeft (28).reduced (2, 2));
+    pageLabel.setBounds (mid.removeFromLeft (72));
+    pageRight.setBounds (mid.removeFromLeft (28).reduced (2, 2));
+
+    constexpr int kLaneColW = 108; // LaneRow drum 64 + Edit 44
+    const int rowH = juce::jmax (1, r.getHeight() / hkr::numLanes);
+    for (int i = 0; i < rows.size(); ++i)
     {
-        auto tools = r.removeFromTop (28);
-        bankBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
-        patBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
-        clearBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
-        randomBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
-        auto mid = tools.withSizeKeepingCentre (90 + 28 + 72 + 28, tools.getHeight());
-        lenBox.setBounds (mid.removeFromLeft (90).reduced (2, 2));
-        pageLeft.setBounds (mid.removeFromLeft (28).reduced (2, 2));
-        pageLabel.setBounds (mid.removeFromLeft (72));
-        pageRight.setBounds (mid.removeFromLeft (28).reduced (2, 2));
+        rows[i]->compact = editing;
+        rows[i]->setBounds (r.getX(), r.getY() + i * rowH,
+                            editing ? kLaneColW : r.getWidth(), rowH);
+        rows[i]->resized();
+        rows[i]->repaint();
     }
-    else
+
+    if (editing)
     {
-        auto left = r.removeFromLeft (72);
-        gridBtn.setBounds (left.removeFromTop (24).reduced (1, 1));
-        const int bh = juce::jmax (1, left.getHeight() / hkr::numLanes);
-        for (int i = 0; i < hkr::numLanes; ++i)
-            lanePick[i].setBounds (left.removeFromTop (bh).reduced (1, 1));
-        wave.setBounds (r.removeFromTop (110).reduced (0, 4));
-        r.removeFromTop (6);
-        const int cols = 4;
-        const int rowsN = 2;
-        const int cellW = juce::jmax (1, r.getWidth() / cols);
-        const int cellH = juce::jmax (1, r.getHeight() / rowsN);
-        auto cell = [&] (int i)
-        {
-            return juce::Rectangle<int> (r.getX() + (i % cols) * cellW,
-                                         r.getY() + (i / cols) * cellH,
-                                         cellW, cellH);
-        };
-        auto kitR = cell (0);
-        editKitLabel.setBounds (kitR.removeFromTop (kLabelH));
-        editKitBox.setBounds (kitR.reduced (8, 10));
+        auto body = r.withTrimmedLeft (kLaneColW + 6);
+        wave.setBounds (body.removeFromTop (250));
+        body.removeFromTop (8);
+        const int cellW = juce::jmax (1, body.getWidth() / juce::jmax (1, editKnobs.size()));
+        auto knobRow = body.removeFromTop (juce::jmin (body.getHeight(), 200));
         for (int i = 0; i < editKnobs.size(); ++i)
-            editKnobs[i]->setBounds (cell (i + 1));
+            editKnobs[i]->setBounds (knobRow.removeFromLeft (cellW));
     }
 
     auto sc = r;
@@ -758,10 +758,6 @@ void HKR5AudioProcessorEditor::layoutContent()
         scKnobs[i]->setBounds (sc.getX() + i * kw, sc.getY(), kw, knH);
     sc.removeFromTop (knH);
     scSpec.setBounds (sc);
-
-    const int rowH = juce::jmax (1, r.getHeight() / hkr::numLanes);
-    for (int i = 0; i < rows.size(); ++i)
-        rows[i]->setBounds (r.getX(), r.getY() + i * rowH, r.getWidth(), rowH);
 
     effectsPage.setBounds (r);
     eqPage.setBounds (r);
@@ -844,8 +840,8 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     const bool fx = editorPage == 1;
     const bool eq = editorPage == 2;
     const bool sc = editorPage == 3;
-    bankBox.setVisible (grid);
-    patBox.setVisible (grid);
+    bankBox.setVisible (main);
+    patBox.setVisible (main);
     lenBox.setVisible (grid);
     pageLeft.setVisible (grid);
     pageRight.setVisible (grid);
@@ -853,13 +849,20 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     randomBtn.setVisible (grid);
     clearBtn.setVisible (grid);
     for (auto* row : rows)
-        row->setVisible (grid);
+    {
+        row->setVisible (main);
+        if (editing && row->lane == editLane)
+        {
+            row->editBtn.setColour (juce::TextButton::buttonColourId, kMagenta);
+            row->editBtn.setColour (juce::TextButton::textColourOffId, kWhite);
+        }
+        else
+        {
+            row->editBtn.removeColour (juce::TextButton::buttonColourId);
+            row->editBtn.removeColour (juce::TextButton::textColourOffId);
+        }
+    }
     wave.setVisible (editing);
-    gridBtn.setVisible (editing);
-    editKitLabel.setVisible (editing);
-    editKitBox.setVisible (editing);
-    for (int i = 0; i < hkr::numLanes; ++i)
-        lanePick[i].setVisible (editing);
     for (auto* k : editKnobs)
         k->setVisible (editing);
     scOn.setVisible (sc);
@@ -921,9 +924,6 @@ void HKR5AudioProcessorEditor::bindEditLane()
     if (editLane < 0)
         return;
     const int ln = editLane;
-    editKitAtt.reset();
-    editKitAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
-        proc.apvts, ParamID::laneKit[ln], editKitBox);
     const char* knobs[] = {
         ParamID::laneTune[ln], ParamID::laneDecay[ln], ParamID::laneClick[ln],
         ParamID::laneDrive[ln], ParamID::laneHp[ln], ParamID::laneLp[ln],
@@ -931,13 +931,6 @@ void HKR5AudioProcessorEditor::bindEditLane()
     };
     for (int i = 0; i < editKnobs.size() && i < 7; ++i)
         editKnobs[i]->attach (proc.apvts, knobs[i]);
-    for (int i = 0; i < hkr::numLanes; ++i)
-    {
-        const bool sel = i == ln;
-        lanePick[i].setColour (juce::TextButton::buttonColourId,
-                               sel ? kMagenta : kDark.brighter (0.12f));
-        lanePick[i].setColour (juce::TextButton::textColourOffId, sel ? kWhite : kCyan);
-    }
     waveDirty = true;
 }
 
@@ -946,7 +939,8 @@ void HKR5AudioProcessorEditor::rebuildWave()
     waveDirty = false;
     if (editLane < 0)
         return;
-    const int n = 1024;
+    // ~2 px per bucket at the 250px-tall wave width; wider buckets read as a solid shape.
+    const int n = 360;
     std::vector<float> full (44100);
     proc.renderLaneShot (editLane, full.data(), (int) full.size(), 44100.0);
 
@@ -956,47 +950,118 @@ void HKR5AudioProcessorEditor::rebuildWave()
     last = juce::jmax (64, last);
     wave.durSec = (float) last / 44100.f;
 
-    wave.samples.resize ((size_t) n);
-    for (int i = 0; i < n; ++i)
+    float peak = 0.f;
+    for (int i = 0; i <= last; ++i)
+        peak = juce::jmax (peak, std::abs (full[(size_t) i]));
+    wave.peakDb = juce::Decibels::gainToDecibels (peak, -100.f);
+    const float norm = peak > 1.0e-6f ? 1.f / peak : 0.f;
+
+    // Min/max per bucket so noise reads as a filled burst, not one random sample per pixel.
+    wave.lo.assign ((size_t) n, 0.f);
+    wave.hi.assign ((size_t) n, 0.f);
+    for (int b = 0; b < n; ++b)
     {
-        const int src = (int) ((double) i / (double) (n - 1) * (double) last);
-        wave.samples[(size_t) i] = juce::jlimit (-1.f, 1.f, full[(size_t) src]);
+        const int s0 = (int) ((double) b / n * (last + 1));
+        const int s1 = juce::jmax (s0 + 1, (int) ((double) (b + 1) / n * (last + 1)));
+        float mn = 0.f, mx = 0.f;
+        for (int i = s0; i < s1 && i <= last; ++i)
+        {
+            mn = juce::jmin (mn, full[(size_t) i]);
+            mx = juce::jmax (mx, full[(size_t) i]);
+        }
+        wave.lo[(size_t) b] = mn * norm;
+        wave.hi[(size_t) b] = mx * norm;
     }
+
+    const int kit = juce::jlimit (0, hkr::numKits - 1,
+                                  (int) proc.apvts.getRawParameterValue (ParamID::laneKit[editLane])->load());
+    wave.title = juce::String (hkr::laneNames[editLane]) + "  " + hkr::kitNames[kit];
+    wave.info = juce::String (juce::roundToInt (wave.durSec * 1000.f)) + " ms";
     wave.repaint();
 }
 
 void HKR5AudioProcessorEditor::WaveView::paint (juce::Graphics& g)
 {
-    auto r = getLocalBounds().toFloat();
+    auto box = getLocalBounds().toFloat();
     g.setColour (kDark);
-    g.fillRoundedRectangle (r, 4.f);
+    g.fillRoundedRectangle (box, 4.f);
     g.setColour (kMetal.withAlpha (0.25f));
-    g.drawRoundedRectangle (r.reduced (0.5f), 4.f, 1.f);
+    g.drawRoundedRectangle (box.reduced (0.5f), 4.f, 1.f);
 
-    if (samples.size() < 2)
-        return;
+    auto inner = box.reduced (10.f, 0.f);
+    auto header = inner.removeFromTop (22.f);
+    auto axis = inner.removeFromBottom (18.f);
+    auto r = inner.reduced (0.f, 4.f);
+
+    g.setFont (boldFont (13.f));
+    g.setColour (kWhite);
+    g.drawText (title, header, juce::Justification::centredLeft, false);
+    g.setColour (kCyan);
+    g.drawText (info, header, juce::Justification::centredRight, false);
 
     const float mid = r.getCentreY();
-    const float amp = r.getHeight() * 0.42f;
-    juce::Path p;
-    const int n = (int) samples.size();
-    for (int i = 0; i < n; ++i)
+    const float amp = r.getHeight() * 0.5f;
+    g.setColour (kMetal.withAlpha (0.35f));
+    g.drawHorizontalLine ((int) mid, r.getX(), r.getRight());
+    const float g6 = juce::Decibels::decibelsToGain (-6.f) * amp;
+    g.setColour (kMetal.withAlpha (0.12f));
+    g.drawHorizontalLine ((int) (mid - g6), r.getX(), r.getRight());
+    g.drawHorizontalLine ((int) (mid + g6), r.getX(), r.getRight());
+
+    // ms ticks: pick the step that gives roughly 4-8 ticks across the shot.
+    const float durMs = durSec * 1000.f;
+    float step = 1000.f;
+    for (float s : { 1.f, 2.f, 5.f, 10.f, 25.f, 50.f, 100.f, 250.f, 500.f })
+        if (durMs / s <= 8.f) { step = s; break; }
+    g.setFont (boldFont (10.f));
+    for (float t = 0.f; t <= durMs + 0.5f; t += step)
     {
-        const float x = r.getX() + (float) i / (float) (n - 1) * r.getWidth();
-        const float y = mid - samples[(size_t) i] * amp;
-        if (i == 0)
-            p.startNewSubPath (x, y);
-        else
-            p.lineTo (x, y);
+        const float x = r.getX() + t / juce::jmax (1.f, durMs) * r.getWidth();
+        g.setColour (kMetal.withAlpha (0.12f));
+        g.drawVerticalLine ((int) x, r.getY(), r.getBottom());
+        g.setColour (kMetal.withAlpha (0.7f));
+        g.drawText (juce::String (juce::roundToInt (t)) + " ms",
+                    juce::Rectangle<float> (x - 30.f, axis.getY(), 60.f, axis.getHeight()),
+                    juce::Justification::centred, false);
     }
-    g.setColour (kCyan);
-    g.strokePath (p, juce::PathStrokeType (1.2f));
+
+    const int n = (int) hi.size();
+    if (n >= 2 && (int) lo.size() == n)
+    {
+        auto xAt = [&] (int i) { return r.getX() + (float) i / (float) (n - 1) * r.getWidth(); };
+        juce::Path shape;
+        shape.startNewSubPath (xAt (0), mid - hi[0] * amp);
+        for (int i = 1; i < n; ++i)
+            shape.lineTo (xAt (i), mid - hi[(size_t) i] * amp);
+        for (int i = n - 1; i >= 0; --i)
+            shape.lineTo (xAt (i), mid - lo[(size_t) i] * amp);
+        shape.closeSubPath();
+
+        g.setColour (kCyan.withAlpha (0.35f));
+        g.fillPath (shape);
+        g.setColour (kCyan);
+        g.strokePath (shape, juce::PathStrokeType (1.f));
+        if (play01 >= 0.f && play01 <= 1.f)
+        {
+            // Tint what has already sounded.
+            juce::Graphics::ScopedSaveState s (g);
+            g.reduceClipRegion (juce::Rectangle<float> (r.getX(), r.getY(),
+                                                        play01 * r.getWidth(), r.getHeight()).toNearestInt());
+            g.setColour (kMagenta.withAlpha (0.5f));
+            g.fillPath (shape);
+        }
+    }
+
+    g.setFont (boldFont (10.f));
+    g.setColour (kMetal.withAlpha (0.8f));
+    g.drawText ("peak " + juce::String (peakDb, 1) + " dB",
+                r.reduced (4.f).removeFromTop (14.f), juce::Justification::topRight, false);
 
     if (play01 >= 0.f && play01 <= 1.f)
     {
         const float x = r.getX() + play01 * r.getWidth();
         g.setColour (kMagenta);
-        g.drawLine (x, r.getY() + 2.f, x, r.getBottom() - 2.f, 1.5f);
+        g.drawLine (x, r.getY(), x, r.getBottom(), 2.f);
     }
 }
 

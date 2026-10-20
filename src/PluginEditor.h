@@ -105,14 +105,17 @@ private:
         juce::Label label;
         juce::Slider slider;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> att;
+        int labelH = 12;
     };
 
     struct WaveView : public juce::Component
     {
         void paint (juce::Graphics& g) override;
-        std::vector<float> samples;
+        std::vector<float> lo, hi; // per-bucket min/max, normalised to the shot's peak
         float durSec = 1.f;
         float play01 = -1.f;
+        float peakDb = -100.f;
+        juce::String title, info;
     };
 
     struct LaneRow : public juce::Component
@@ -131,6 +134,7 @@ private:
         juce::ComboBox kitBox;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> kitAtt;
         juce::TextButton editBtn { "Edit" };
+        bool compact = false; // edit mode: only name, kit and Edit
         juce::Slider swing;
         juce::Label swingLabel;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> swingAtt;
@@ -182,11 +186,6 @@ private:
     juce::TextButton randomBtn { "Random" }, clearBtn { "Clear" };
     juce::Label pageLabel;
     WaveView wave;
-    juce::TextButton gridBtn { "Grid" };
-    juce::TextButton lanePick[hkr::numLanes];
-    juce::Label editKitLabel;
-    juce::ComboBox editKitBox;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> editKitAtt;
     juce::OwnedArray<Knob> editKnobs;
     AboutBox aboutBox;
     int editorPage = 0;
