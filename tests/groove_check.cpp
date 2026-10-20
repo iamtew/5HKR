@@ -220,9 +220,10 @@ int main()
             }
             return std::tuple<float, float, float> { e, peak, late };
         };
-        const auto [e808chh, p808chh, late808] = energy (kit808, chh, 800, 150);
-        const auto [e808cow, p808cow, lateCow] = energy (kit808, cowbell, 800, 150);
-        const auto [e909chh, p909chh, late909] = energy (kit909, chh, 800, 150);
+        // Tail window 30..100 ms: the first few ms are snap, not decay.
+        const auto [e808chh, p808chh, late808] = energy (kit808, chh, 4410, 1323);
+        const auto [e808cow, p808cow, lateCow] = energy (kit808, cowbell, 4410, 1323);
+        const auto [e909chh, p909chh, late909] = energy (kit909, chh, 4410, 1323);
         assert (p808chh > 0.2f);
         assert (p808cow > 0.2f);
         assert (std::abs (e808chh - e808cow) / (e808chh + e808cow + 1e-9f) > 0.1f);

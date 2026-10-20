@@ -9,49 +9,64 @@
 namespace hkr
 {
 
-// Analog-ish hits. Accent = louder and a bit brighter. Tune is semitones.
-// Kits are coefficient tables, not four engines. No sample ROM.
+// Analog-ish hits. Kits are coefficient tables, not four engines. No sample ROM.
+//
+// Per lane, per sample:
+//   osc stack (+ pitch drop) and/or noise  ->  resonant SVF (BP or HP)
+//   -> one-pole LP (tone)  -> + click burst  -> snap + tail envelope
+//   -> gain  -> tanh saturation (kit sat + Drive)  -> bit-round
+//
+// Every Spec time is ms to -60 dB and every frequency is Hz, so a hit sounds
+// the same at 44.1k and 96k. Coefficients are rebuilt once per block (setters
+// mark dirty, process() refreshes), so render() has no pow / exp / tan.
+// Accent = louder, more snap, filter ~15% brighter. Tune is semitones and moves
+// oscillators and the SVF together.
 struct Voices
 {
     void prepare (double sampleRate)
     {
         sr = sampleRate > 1.0 ? sampleRate : 44100.0;
         rng = 0xA5A5u;
-        for (int i = 0; i < numLanes; ++i)
-        {
-            env[i] = 0.f;
-            bright[i] = 0.f;
-            age[i] = 0;
-            lp[i] = 0.f;
-            bp[i] = 0.f;
-            for (int o = 0; o < 6; ++o)
-                osc[i][o] = 0.f;
-        }
+        for (auto& s : st)
+            s = State {};
+        clickMul = decayMul (4.f);
+        dirty = true;
     }
 
     void trigger (int lane, bool accent)
     {
         if (lane < 0 || lane >= numLanes)
             return;
-        env[lane] = accent ? 1.f : 0.65f;
-        bright[lane] = accent ? 1.f : 0.f;
-        age[lane] = 0;
-        for (int o = 0; o < 6; ++o)
-            osc[lane][o] = 0.f;
+        auto& s = st[lane];
+        s.level = accent ? 1.f : 0.65f;
+        s.accent = accent;
+        s.tail = 1.f;
+        s.snap = accent ? 1.3f : 1.f;
+        s.click = 1.f;
+        s.pitch = 1.f;
+        s.age = 0;
+        // Squares are free-running like the 808 metal oscillators (each hit
+        // lands on a different phase). Sines are struck resonators: reset.
+        if (! kSpec[kit[lane]][lane].square)
+            for (auto& p : s.ph)
+                p = 0.f;
     }
 
     void setTune (const float semi[numLanes])
     {
         for (int i = 0; i < numLanes; ++i)
             tune[i] = semi[i];
+        dirty = true;
     }
 
     void setKit (const int k[numLanes])
     {
         for (int i = 0; i < numLanes; ++i)
             kit[i] = std::clamp (k[i], 0, numKits - 1);
+        dirty = true;
     }
 
+    // All knobs 0..1, 0.5 = kit spec.
     void setEdit (const float decay[numLanes], const float click[numLanes],
                   const float hpAmt[numLanes], const float lpAmt[numLanes],
                   const float gain[numLanes], const float drive[numLanes])
@@ -65,33 +80,78 @@ struct Voices
             editGain[i] = std::clamp (gain[i], 0.f, 1.f);
             editDrive[i] = std::clamp (drive[i], 0.f, 1.f);
         }
+        dirty = true;
     }
 
     void process (float laneOut[numLanes])
     {
+        if (dirty)
+        {
+            for (int i = 0; i < numLanes; ++i)
+                refresh (i);
+            dirty = false;
+        }
         for (int i = 0; i < numLanes; ++i)
             laneOut[i] = render (i);
     }
 
-    float envelope (int lane) const { return env[lane]; }
-    int samplesSinceTrigger (int lane) const { return age[lane]; }
+    float envelope (int lane) const { return st[lane].env; }
+    int samplesSinceTrigger (int lane) const { return st[lane].age; }
 
 private:
-    enum Kind : uint8_t { Noise, Metal, Tone };
+    enum Mode : uint8_t { BP, HP };
 
     struct Spec
     {
-        Kind kind;
-        float decay;
-        float hp;    // one-pole mix 0..1
-        float lp;    // bandpass lowpass after HP; 1 = skip
+        float tailMs;    // body decay
+        float snapMs;    // fast transient on top of the tail (0 = none)
+        float snapAmt;   // transient height relative to tail
+        float fHz;       // SVF cutoff / centre
+        float q;
+        Mode mode;
+        float lpHz;      // tone LP; >= 20k is open
+        float noiseMix;  // 0 = oscillators only, 1 = noise only
+        float dropSemi;  // pitch knock: start this many semitones up...
+        float dropMs;    // ...and fall back over this long
+        float sat;       // built-in saturation 0..1
         float gain;
-        float click;
-        float bits;  // 0 = full; else round(n * bits) / bits
+        float click;     // 4 ms noise burst on the attack
+        float bits;      // 0 = full; else round (x * bits) / bits after the envelope
         uint8_t nOsc;
         bool square;
         float hz[6];
     };
+
+    // Per-lane coefficients, rebuilt by refresh().
+    struct Coef
+    {
+        float inc[6] {};          // phase increment per sample (cycles)
+        float oscNorm = 1.f;
+        int nOsc = 0;
+        bool square = false;
+        float noiseMix = 1.f;
+        float dropDepth = 0.f, dropMul = 0.f;
+        float a1[2] {}, a2[2] {}, a3[2] {}, k[2] {}; // SVF [normal, accent]
+        bool hp = false;
+        float lpC = 1.f;
+        float clickAmt = 0.f;
+        float tailMul = 0.f, snapMul = 0.f, snapAmt = 0.f, snapNorm = 1.f;
+        float pre = 1.f, invTanhPre = 1.f;
+        float bits = 0.f;
+        float gain = 0.f;
+    };
+
+    struct State
+    {
+        float ph[6] {};
+        float ic1 = 0.f, ic2 = 0.f, lp = 0.f;
+        float tail = 0.f, snap = 0.f, click = 0.f, pitch = 0.f;
+        float level = 0.f, env = 0.f;
+        bool accent = false;
+        int age = 0;
+    };
+
+    static constexpr float kTwoPi = 6.2831853f;
 
     float noise()
     {
@@ -99,142 +159,182 @@ private:
         return (float) ((int) (rng >> 16) - 32768) * (1.f / 32768.f);
     }
 
-    float quant (float x, float bits) const
+    // Per-sample multiplier that reaches -60 dB after ms.
+    float decayMul (float ms) const
     {
-        if (bits <= 0.f)
-            return x;
-        return std::round (x * bits) / bits;
+        if (ms <= 0.f)
+            return 0.f;
+        return std::exp (-6.9078f / (ms * 0.001f * (float) sr));
     }
 
-    float ratio (int lane) const
-    {
-        return std::pow (2.f, tune[lane] / 12.f);
-    }
+    static float around (float spec, float amt) { return spec * (0.4f + 1.2f * amt); }
+    static float octaves (float amt, float span) { return std::pow (2.f, (amt - 0.5f) * span); }
 
-    static float around (float spec, float amt)
+    void refresh (int i)
     {
-        return spec * (0.4f + 1.2f * amt);
-    }
+        const Spec& s = kSpec[kit[i]][i];
+        auto& c = co[i];
+        const float fs = (float) sr;
+        const float r = std::pow (2.f, tune[i] / 12.f);
 
-    static constexpr float kTwoPi = 6.2831853f;
+        c.nOsc = std::min ((int) s.nOsc, 6);
+        c.square = s.square;
+        for (int o = 0; o < c.nOsc; ++o)
+            c.inc[o] = s.hz[o] * r / fs;
+        c.oscNorm = c.nOsc > 0 ? 1.f / std::sqrt ((float) c.nOsc) : 0.f;
+        c.noiseMix = c.nOsc > 0 ? s.noiseMix : 1.f;
+        c.dropDepth = std::pow (2.f, s.dropSemi / 12.f) - 1.f;
+        c.dropMul = decayMul (s.dropMs);
 
-    float tickOsc (int lane, int o, float hz)
-    {
-        osc[lane][o] += (float) (2.0 * 3.141592653589793 * (double) hz / sr);
-        if (osc[lane][o] > kTwoPi)
-            osc[lane][o] -= kTwoPi;
-        return osc[lane][o];
-    }
-
-    float mixOsc (int lane, const Spec& s, float r)
-    {
-        const int n = std::max (1, (int) s.nOsc);
-        float sum = 0.f;
-        for (int o = 0; o < n; ++o)
+        // TPT SVF (Zavalishin): g = tan(pi f / fs), k = 1/Q. Stable at any f.
+        const float f = s.fHz * r * octaves (editHp[i], 4.f);
+        for (int a = 0; a < 2; ++a)
         {
-            const float ph = tickOsc (lane, o, s.hz[o] * r);
-            sum += s.square ? (ph < 3.14159265f ? 1.f : -1.f) : std::sin (ph);
+            const float fa = std::clamp (f * (a ? 1.15f : 1.f), 20.f, fs * 0.45f);
+            const float g = std::tan (3.14159265f * fa / fs);
+            c.k[a] = 1.f / std::max (0.3f, s.q);
+            c.a1[a] = 1.f / (1.f + g * (g + c.k[a]));
+            c.a2[a] = g * c.a1[a];
+            c.a3[a] = g * c.a2[a];
         }
-        return sum / (float) n;
-    }
+        c.hp = s.mode == HP;
 
-    float filter (int lane, float x, float hpAmt, float lpAmt)
-    {
-        hpAmt = std::clamp (hpAmt, 0.02f, 0.9f);
-        lp[lane] += hpAmt * (x - lp[lane]);
-        float y = x - lp[lane];
-        if (lpAmt < 0.99f)
-        {
-            lpAmt = std::clamp (lpAmt, 0.02f, 0.98f);
-            bp[lane] += lpAmt * (y - bp[lane]);
-            y = bp[lane];
-        }
-        return y;
+        const float lpHz = s.lpHz * octaves (editLp[i], 4.f);
+        c.lpC = lpHz >= fs * 0.45f ? 1.f : 1.f - std::exp (-kTwoPi * lpHz / fs);
+
+        // Click knob scales both the transient and the noise burst.
+        const float clickScale = 2.f * editClick[i];
+        c.clickAmt = s.click * clickScale;
+        c.snapAmt = s.snapAmt * clickScale;
+        c.snapNorm = 1.f / (1.f + s.snapAmt);
+        // Decay knob: x0.35 .. x2.8 of the kit tail.
+        c.tailMul = decayMul (s.tailMs * octaves (editDecay[i], 3.f));
+        c.snapMul = decayMul (s.snapMs);
+
+        // tanh(x * pre) / tanh(pre): peaks stay put, tails get thicker.
+        c.pre = 1.f + 4.f * (s.sat + editDrive[i]);
+        c.invTanhPre = 1.f / std::tanh (c.pre);
+        c.bits = s.bits;
+        c.gain = around (s.gain, editGain[i]);
     }
 
     float render (int lane)
     {
-        const Spec& s = kSpec[kit[lane]][lane];
-        // 0.5 = kit spec. Decay exponent floor 0.5 so tails cannot hang forever.
-        env[lane] *= std::pow (s.decay, 2.f - 1.5f * editDecay[lane]);
-        ++age[lane];
-        const float e = env[lane];
-        const float r = ratio (lane);
-        const float hpAmt = around (s.hp, editHp[lane]) * r * (1.f + 0.2f * bright[lane]);
+        auto& s = st[lane];
+        const auto& c = co[lane];
+        // Silent lane: skip the work. -80 dB is below anything audible here.
+        if (s.tail < 1e-4f && s.snap < 1e-4f)
+        {
+            s.env = 0.f;
+            return 0.f;
+        }
+        ++s.age;
+
         float x = 0.f;
-        if (s.kind == Noise)
-            x = quant (noise(), s.bits);
-        else
-            x = mixOsc (lane, s, r);
-        x = filter (lane, x, hpAmt, around (s.lp, editLp[lane]));
-        x += around (s.click, editClick[lane]) * e * e * noise();
-        x *= e * around (s.gain, editGain[lane]);
-        if (editDrive[lane] > 0.f)
-            x = std::tanh (x * (1.f + 4.f * editDrive[lane]));
-        return x;
+        if (c.nOsc > 0)
+        {
+            const float bend = 1.f + c.dropDepth * s.pitch;
+            s.pitch *= c.dropMul;
+            float sum = 0.f;
+            for (int o = 0; o < c.nOsc; ++o)
+            {
+                float& p = s.ph[o];
+                p += c.inc[o] * bend;
+                p -= std::floor (p);
+                sum += c.square ? (p < 0.5f ? 1.f : -1.f) : std::sin (kTwoPi * p);
+            }
+            x = sum * c.oscNorm * (1.f - c.noiseMix);
+        }
+        if (c.noiseMix > 0.f)
+            x += noise() * c.noiseMix;
+
+        const int a = s.accent ? 1 : 0;
+        const float v3 = x - s.ic2;
+        const float v1 = c.a1[a] * s.ic1 + c.a2[a] * v3;
+        const float v2 = s.ic2 + c.a2[a] * s.ic1 + c.a3[a] * v3;
+        s.ic1 = 2.f * v1 - s.ic1;
+        s.ic2 = 2.f * v2 - s.ic2;
+        // BP is k * band so the peak is unity whatever the Q.
+        float y = c.hp ? x - c.k[a] * v1 - v2 : c.k[a] * v1;
+
+        s.lp += c.lpC * (y - s.lp);
+        y = s.lp;
+
+        y += c.clickAmt * s.click * noise();
+        s.click *= clickMul;
+
+        const float amp = s.level * (s.tail + c.snapAmt * s.snap) * c.snapNorm;
+        s.tail *= c.tailMul;
+        s.snap *= c.snapMul;
+        s.env = std::min (amp, 1.f);
+        // Gain before tanh so Drive is bounded by 1 / tanh(pre) <= 1.31.
+        y *= amp * c.gain;
+
+        if (c.pre > 1.001f)
+            y = std::tanh (y * c.pre) * c.invTanhPre;
+        if (c.bits > 0.f)
+            y = std::round (y * c.bits) / c.bits;
+        return y;
     }
 
-    // Inspired-by analog models. Index = Kit enum.
+    // Inspired-by analog models. Index = Kit enum, then lane
+    // (CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim).
+    // Columns: tailMs snapMs snapAmt | fHz q mode | lpHz | noise | dropSemi dropMs |
+    //          sat gain click bits | nOsc square hz[]
     static constexpr Spec kSpec[numKits][numLanes] = {
-        // 707 — short, thin, PCM-ish bandpass
+        // 707 — tight, 8-bit PCM edge, a little dark, almost no saturation
         {
-            { Noise, 0.978f, 0.42f, 0.55f, 0.72f, 0.35f, 0.f, 0, false, {} },           // CHH
-            { Noise, 0.990f, 0.32f, 0.50f, 0.62f, 0.22f, 0.f, 0, false, {} },           // OHH
-            { Noise, 0.9978f, 0.18f, 0.40f, 0.55f, 0.18f, 0.f, 0, false, {} },          // Crash
-            { Noise, 0.9965f, 0.24f, 0.45f, 0.55f, 0.15f, 0.f, 0, false, {} },          // Cym
-            { Noise, 0.930f, 0.50f, 0.62f, 0.70f, 0.40f, 0.f, 0, false, {} },           // Shaker
-            { Tone,  0.975f, 0.08f, 1.00f, 0.78f, 0.20f, 0.f, 1, true, { 2400.f } },    // Clave
-            { Tone,  0.984f, 0.06f, 1.00f, 0.62f, 0.08f, 0.f, 2, true, { 587.f, 845.f } }, // Cow
-            { Tone,  0.970f, 0.12f, 1.00f, 0.70f, 0.45f, 0.f, 1, false, { 420.f } },    // Rim
+            { 35.f, 3.f, 0.5f,    6500.f, 0.9f, HP, 11000.f, 0.6f, 0.f, 0.f,  0.05f, 1.25f, 0.10f, 128.f, 6, true, { 245.f, 353.f, 467.f, 555.f, 722.f, 980.f } },
+            { 280.f, 4.f, 0.4f,   6500.f, 0.9f, HP, 11000.f, 0.6f, 0.f, 0.f,  0.05f, 1.25f, 0.08f, 128.f, 6, true, { 245.f, 353.f, 467.f, 555.f, 722.f, 980.f } },
+            { 1100.f, 15.f, 0.5f, 4000.f, 0.7f, HP, 10000.f, 0.8f, 0.f, 0.f,  0.f, 1.3f, 0.05f, 128.f, 6, true, { 245.f, 353.f, 467.f, 555.f, 722.f, 980.f } },
+            { 900.f, 10.f, 0.4f,  4200.f, 2.0f, BP, 10000.f, 0.35f, 0.f, 0.f, 0.f, 1.35f, 0.05f, 128.f, 6, true, { 320.f, 540.f, 890.f, 1234.f, 1530.f, 2050.f } },
+            { 70.f, 10.f, 1.0f,   6500.f, 2.0f, BP, 12000.f, 1.f, 0.f, 0.f,   0.f, 1.9f, 0.f,   128.f, 0, false, {} },
+            { 18.f, 0.f, 0.f,     300.f, 0.7f, HP, 12000.f, 0.f, 0.f, 0.f,    0.1f, 0.66f, 0.05f, 128.f, 1, false, { 2400.f } },
+            { 130.f, 8.f, 0.8f,   1100.f, 1.0f, BP, 9000.f, 0.f, 0.f, 0.f,    0.1f, 0.8f, 0.f,   128.f, 2, true, { 587.f, 845.f } },
+            { 12.f, 2.f, 1.0f,    350.f, 0.7f, HP, 12000.f, 0.f, 0.f, 0.f,    0.3f, 0.72f, 0.15f, 128.f, 2, false, { 420.f, 1500.f } },
         },
-        // 808 — square stacks, analog tails
+        // 808 — square-stack metal into resonant BP, clipped clave/rim, two-stage cowbell
         {
-            { Metal, 0.992f, 0.38f, 1.00f, 0.58f, 0.12f, 0.f, 6, true,
-              { 205.f, 304.f, 370.f, 523.f, 540.f, 800.f } },
-            { Metal, 0.9978f, 0.28f, 1.00f, 0.50f, 0.08f, 0.f, 6, true,
-              { 205.f, 304.f, 370.f, 523.f, 540.f, 800.f } },
-            { Metal, 0.9995f, 0.16f, 1.00f, 0.42f, 0.06f, 0.f, 6, true,
-              { 205.f, 304.f, 370.f, 523.f, 540.f, 800.f } },
-            { Metal, 0.9992f, 0.22f, 1.00f, 0.45f, 0.06f, 0.f, 6, true,
-              { 205.f, 304.f, 370.f, 523.f, 540.f, 800.f } },
-            { Noise, 0.940f, 0.48f, 1.00f, 0.68f, 0.30f, 0.f, 0, false, {} },
-            { Tone,  0.988f, 0.05f, 1.00f, 0.72f, 0.18f, 0.f, 1, false, { 2500.f } },
-            { Metal, 0.993f, 0.07f, 1.00f, 0.58f, 0.05f, 0.f, 2, true, { 540.f, 800.f } },
-            { Tone,  0.982f, 0.10f, 1.00f, 0.62f, 0.40f, 0.f, 1, false, { 380.f } },
+            { 60.f, 8.f, 0.6f,    7100.f, 1.0f, BP, 20000.f, 0.f, 0.f, 0.f,   0.2f, 0.51f, 0.10f, 0.f, 6, true, { 205.3f, 304.4f, 369.6f, 522.7f, 540.f, 800.f } },
+            { 500.f, 10.f, 0.4f,  7100.f, 1.0f, BP, 20000.f, 0.f, 0.f, 0.f,   0.2f, 0.51f, 0.08f, 0.f, 6, true, { 205.3f, 304.4f, 369.6f, 522.7f, 540.f, 800.f } },
+            { 1400.f, 20.f, 0.8f, 4500.f, 0.6f, BP, 20000.f, 0.f, 0.f, 0.f,   0.15f, 0.45f, 0.06f, 0.f, 6, true, { 205.3f, 304.4f, 369.6f, 522.7f, 540.f, 800.f } },
+            { 1000.f, 15.f, 0.5f, 3440.f, 1.5f, BP, 20000.f, 0.f, 0.f, 0.f,   0.1f, 0.58f, 0.04f, 0.f, 6, true, { 205.3f, 304.4f, 369.6f, 522.7f, 540.f, 800.f } },
+            { 30.f, 0.f, 0.f,     5000.f, 0.7f, HP, 20000.f, 1.f, 0.f, 0.f,   0.f, 0.9f, 0.f,   0.f, 0, false, {} },
+            { 30.f, 0.f, 0.f,     300.f, 0.7f, HP, 20000.f, 0.f, 0.f, 0.f,    0.3f, 0.57f, 0.05f, 0.f, 1, false, { 2500.f } },
+            { 280.f, 25.f, 1.5f,  2640.f, 0.8f, BP, 20000.f, 0.f, 0.f, 0.f,   0.2f, 0.61f, 0.f,   0.f, 2, true, { 540.f, 800.f } },
+            { 18.f, 3.f, 1.0f,    600.f, 0.7f, HP, 20000.f, 0.f, 0.f, 0.f,    0.8f, 0.55f, 0.15f, 0.f, 2, false, { 455.f, 1667.f } },
         },
-        // 909 — gated noise hats, sizzle crash
+        // 909 — metal + noise hats through HP, 6-bit cymbals, snappy rim
         {
-            { Noise, 0.972f, 0.40f, 0.58f, 0.75f, 0.42f, 0.f, 0, false, {} },
-            { Noise, 0.9960f, 0.26f, 0.48f, 0.58f, 0.22f, 0.f, 0, false, {} },
-            { Noise, 0.9993f, 0.14f, 0.38f, 0.50f, 0.16f, 0.f, 0, false, {} },
-            { Tone,  0.9988f, 0.20f, 0.42f, 0.48f, 0.20f, 0.f, 3, false, { 320.f, 540.f, 890.f } },
-            { Noise, 0.948f, 0.46f, 0.60f, 0.66f, 0.28f, 0.f, 0, false, {} },
-            { Tone,  0.980f, 0.10f, 1.00f, 0.74f, 0.35f, 0.f, 1, true, { 2700.f } },
-            { Tone,  0.990f, 0.08f, 1.00f, 0.55f, 0.10f, 0.f, 2, false, { 555.f, 835.f } },
-            { Tone,  0.978f, 0.14f, 1.00f, 0.68f, 0.50f, 0.f, 1, false, { 450.f } },
+            { 45.f, 4.f, 0.8f,    8000.f, 1.1f, HP, 20000.f, 0.5f, 0.f, 0.f,  0.f, 1.1f, 0.20f, 64.f, 6, true, { 311.f, 450.f, 584.f, 727.f, 918.f, 1150.f } },
+            { 380.f, 5.f, 0.5f,   7000.f, 1.1f, HP, 20000.f, 0.5f, 0.f, 0.f,  0.f, 1.05f, 0.12f, 64.f, 6, true, { 311.f, 450.f, 584.f, 727.f, 918.f, 1150.f } },
+            { 1600.f, 30.f, 0.6f, 5000.f, 0.7f, HP, 20000.f, 0.75f, 0.f, 0.f, 0.f, 1.0f, 0.10f, 64.f, 6, true, { 311.f, 450.f, 584.f, 727.f, 918.f, 1150.f } },
+            { 1300.f, 10.f, 0.4f, 5000.f, 2.5f, BP, 20000.f, 0.2f, 0.f, 0.f,  0.f, 1.3f, 0.05f, 64.f, 6, true, { 320.f, 540.f, 890.f, 1234.f, 1530.f, 2050.f } },
+            { 60.f, 0.f, 0.f,     7500.f, 1.2f, BP, 20000.f, 1.f, 0.f, 0.f,   0.f, 1.25f, 0.f,   0.f, 0, false, {} },
+            { 22.f, 0.f, 0.f,     400.f, 0.7f, HP, 20000.f, 0.f, 7.f, 4.f,    0.2f, 0.58f, 0.10f, 0.f, 1, false, { 2700.f } },
+            { 200.f, 15.f, 1.0f,  1500.f, 1.2f, BP, 20000.f, 0.f, 0.f, 0.f,   0.3f, 0.68f, 0.f,   0.f, 2, true, { 555.f, 835.f } },
+            { 14.f, 2.f, 1.5f,    500.f, 1.5f, HP, 20000.f, 0.15f, 5.f, 3.f,  0.9f, 0.53f, 0.30f, 0.f, 2, false, { 480.f, 1250.f } },
         },
-        // Linn — darker, grainy, woody
+        // Linn — dark, grainy, woody sine cow/rim with pitch knock
         {
-            { Noise, 0.989f, 0.22f, 0.40f, 0.70f, 0.28f, 48.f, 0, false, {} },
-            { Noise, 0.9962f, 0.16f, 0.35f, 0.58f, 0.16f, 48.f, 0, false, {} },
-            { Noise, 0.9991f, 0.10f, 0.28f, 0.48f, 0.12f, 32.f, 0, false, {} },
-            { Tone,  0.9985f, 0.12f, 0.32f, 0.50f, 0.10f, 0.f, 2, false, { 280.f, 420.f } },
-            { Noise, 0.910f, 0.38f, 0.55f, 0.72f, 0.50f, 24.f, 0, false, {} },
-            { Tone,  0.982f, 0.06f, 1.00f, 0.70f, 0.22f, 0.f, 1, false, { 2100.f } },
-            { Tone,  0.991f, 0.05f, 1.00f, 0.60f, 0.08f, 0.f, 2, false, { 480.f, 720.f } },
-            { Tone,  0.968f, 0.18f, 1.00f, 0.72f, 0.55f, 0.f, 1, false, { 340.f } },
+            { 55.f, 6.f, 0.5f,    5000.f, 0.8f, HP, 9000.f, 0.85f, 0.f, 0.f,  0.1f, 1.08f, 0.10f, 64.f, 6, true, { 245.f, 353.f, 467.f, 555.f, 722.f, 980.f } },
+            { 420.f, 8.f, 0.4f,   5000.f, 0.8f, HP, 8500.f, 0.85f, 0.f, 0.f,  0.1f, 1.09f, 0.08f, 64.f, 6, true, { 245.f, 353.f, 467.f, 555.f, 722.f, 980.f } },
+            { 1300.f, 20.f, 0.5f, 3500.f, 0.7f, HP, 7500.f, 0.9f, 0.f, 0.f,   0.1f, 0.95f, 0.05f, 64.f, 6, true, { 245.f, 353.f, 467.f, 555.f, 722.f, 980.f } },
+            { 1000.f, 12.f, 0.4f, 3200.f, 1.8f, BP, 7000.f, 0.3f, 0.f, 0.f,   0.1f, 1.0f, 0.04f, 64.f, 6, true, { 320.f, 540.f, 890.f, 1234.f, 1530.f, 2050.f } },
+            { 80.f, 25.f, 1.2f,   5500.f, 1.5f, BP, 9000.f, 1.f, 0.f, 0.f,    0.f, 1.65f, 0.f,   48.f, 0, false, {} },
+            { 28.f, 0.f, 0.f,     250.f, 0.7f, HP, 8000.f, 0.f, 5.f, 6.f,     0.15f, 0.63f, 0.05f, 96.f, 1, false, { 2100.f } },
+            { 160.f, 10.f, 0.6f,  200.f, 0.7f, HP, 6000.f, 0.f, 3.f, 10.f,    0.25f, 0.59f, 0.f,   64.f, 2, false, { 480.f, 720.f } },
+            { 25.f, 3.f, 1.2f,    250.f, 0.7f, HP, 7000.f, 0.1f, 6.f, 4.f,    0.5f, 0.63f, 0.20f, 64.f, 2, false, { 340.f, 1180.f } },
         },
     };
 
     double sr = 44100.0;
     uint32_t rng = 1;
+    bool dirty = true;
+    float clickMul = 0.f;
     int kit[numLanes] { kit808, kit808, kit808, kit808, kit808, kit808, kit808, kit808 };
-    float env[numLanes] {};
-    int age[numLanes] {};
-    float bright[numLanes] {};
-    float osc[numLanes][6] {};
-    float lp[numLanes] {};
-    float bp[numLanes] {};
+    Coef co[numLanes] {};
+    State st[numLanes] {};
     float tune[numLanes] {};
     float editDecay[numLanes] { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
     float editClick[numLanes] { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
