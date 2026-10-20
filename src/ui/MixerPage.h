@@ -12,7 +12,7 @@ public:
     {
         for (int i = 0; i < hkr::numLanes; ++i)
         {
-            auto* s = strips.add (new Strip (*this, i));
+            auto* s = strips.add (new Strip (proc, i));
             addAndMakeVisible (s);
         }
     }
@@ -111,6 +111,7 @@ private:
     struct MixKnob : public juce::Component
     {
         MixKnob (HKR5AudioProcessor& st, const char* id, const juce::String& name, juce::Colour accent)
+            : proc (st)
         {
             label.setText (name, juce::dontSendNotification);
             label.setJustificationType (juce::Justification::centred);
@@ -123,14 +124,26 @@ private:
             slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
             slider.setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
             slider.setOpaque (false);
-            if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (st.apvts.getParameter (id)))
-                slider.setDoubleClickReturnValue (true, ranged->convertFrom0to1 (ranged->getDefaultValue()));
-            att = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
-                st.apvts, id, slider);
+            bind (id);
             addAndMakeVisible (slider);
         }
 
         ~MixKnob() override { slider.setLookAndFeel (nullptr); }
+
+        void setAccent (juce::Colour c)
+        {
+            lnf.accent = c;
+            repaint();
+        }
+
+        void bind (const char* id)
+        {
+            att.reset();
+            if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (proc.apvts.getParameter (id)))
+                slider.setDoubleClickReturnValue (true, ranged->convertFrom0to1 (ranged->getDefaultValue()));
+            att = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+                proc.apvts, id, slider);
+        }
 
         void resized() override
         {
@@ -139,22 +152,24 @@ private:
             slider.setBounds (r);
         }
 
+        HKR5AudioProcessor& proc;
         MixLnF lnf;
         juce::Label label;
         juce::Slider slider;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> att;
     };
 
+public:
     struct Strip : public juce::Component
     {
-        Strip (MixerPage& page, int ln)
-            : proc (page.proc), lane (ln), accent (kAccent[ln]),
-              gain (page.proc, ParamID::laneMixGain[ln], "Gain", accent),
-              high (page.proc, ParamID::laneEqHi[ln], "High", accent),
-              mid (page.proc, ParamID::laneEqMid[ln], "Mid", accent),
-              low (page.proc, ParamID::laneEqLo[ln], "Low", accent),
-              filter (page.proc, ParamID::laneFilter[ln], "Filter", accent),
-              pan (page.proc, ParamID::lanePan[ln], "Pan", accent)
+        Strip (HKR5AudioProcessor& p, int ln)
+            : proc (p),
+              gain (p, ParamID::laneMixGain[ln], "Gain", kAccent[ln]),
+              high (p, ParamID::laneEqHi[ln], "High", kAccent[ln]),
+              mid (p, ParamID::laneEqMid[ln], "Mid", kAccent[ln]),
+              low (p, ParamID::laneEqLo[ln], "Low", kAccent[ln]),
+              filter (p, ParamID::laneFilter[ln], "Filter", kAccent[ln]),
+              pan (p, ParamID::lanePan[ln], "Pan", kAccent[ln])
         {
             juce::Component* knobs[] = { &gain, &high, &mid, &low, &filter, &pan };
             for (auto* k : knobs)
@@ -162,14 +177,10 @@ private:
 
             mute.setComponentID ("mute");
             mute.setLookAndFeel (&lnf);
-            muteAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-                page.proc.apvts, ParamID::laneOn[ln], mute);
             addAndMakeVisible (mute);
 
             solo.setComponentID ("solo");
             solo.setLookAndFeel (&lnf);
-            soloAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-                page.proc.apvts, ParamID::laneSolo[ln], solo);
             addAndMakeVisible (solo);
 
             fader.setLookAndFeel (&lnf);
@@ -178,20 +189,49 @@ private:
             fader.setOpaque (false);
             fader.setColour (juce::Slider::backgroundColourId, juce::Colours::transparentBlack);
             fader.setColour (juce::Slider::trackColourId, juce::Colours::transparentBlack);
-            if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (
-                    page.proc.apvts.getParameter (ParamID::laneFader[ln])))
-                fader.setDoubleClickReturnValue (true, ranged->convertFrom0to1 (ranged->getDefaultValue()));
-            faderAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
-                page.proc.apvts, ParamID::laneFader[ln], fader);
             fader.onValueChange = [this] { repaint(); };
             addAndMakeVisible (fader);
 
-            name.setText (hkr::laneNames[ln], juce::dontSendNotification);
             name.setJustificationType (juce::Justification::centred);
             name.setFont (labelFont (11.f));
             name.setColour (juce::Label::textColourId, kWhite);
             name.setInterceptsMouseClicks (false, false);
             addAndMakeVisible (name);
+            bind (ln);
+        }
+
+        void bind (int ln)
+        {
+            lane = juce::jlimit (0, hkr::numLanes - 1, ln);
+            accent = kAccent[lane];
+            gain.bind (ParamID::laneMixGain[lane]);
+            high.bind (ParamID::laneEqHi[lane]);
+            mid.bind (ParamID::laneEqMid[lane]);
+            low.bind (ParamID::laneEqLo[lane]);
+            filter.bind (ParamID::laneFilter[lane]);
+            pan.bind (ParamID::lanePan[lane]);
+            gain.setAccent (accent);
+            high.setAccent (accent);
+            mid.setAccent (accent);
+            low.setAccent (accent);
+            filter.setAccent (accent);
+            pan.setAccent (accent);
+
+            muteAtt.reset();
+            soloAtt.reset();
+            muteAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+                proc.apvts, ParamID::laneOn[lane], mute);
+            soloAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+                proc.apvts, ParamID::laneSolo[lane], solo);
+            faderAtt.reset();
+            if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (
+                    proc.apvts.getParameter (ParamID::laneFader[lane])))
+                fader.setDoubleClickReturnValue (true, ranged->convertFrom0to1 (ranged->getDefaultValue()));
+            faderAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+                proc.apvts, ParamID::laneFader[lane], fader);
+            name.setText (hkr::laneNames[lane], juce::dontSendNotification);
+            shown = proc.lanePeak (lane);
+            repaint();
         }
 
         ~Strip() override

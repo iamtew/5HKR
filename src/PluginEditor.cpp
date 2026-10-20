@@ -605,6 +605,7 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
     }
 
     content.addChildComponent (wave);
+    content.addChildComponent (editStrip);
     static constexpr const char* kEditNames[] = {
         "Tune", "Decay", "Click", "Drive", "HPF", "Tone", "Level"
     };
@@ -742,6 +743,8 @@ void HKR5AudioProcessorEditor::layoutContent()
     if (editing)
     {
         auto body = r.withTrimmedLeft (kLaneColW + 6);
+        editStrip.setBounds (body.removeFromRight (120).reduced (4, 0));
+        body.removeFromRight (6);
         wave.setBounds (body.removeFromTop (250));
         body.removeFromTop (8);
         const int cellW = juce::jmax (1, body.getWidth() / juce::jmax (1, editKnobs.size()));
@@ -784,6 +787,7 @@ void HKR5AudioProcessorEditor::timerCallback()
             wave.play01 = x01;
             wave.repaint();
         }
+        editStrip.tickMeter();
     }
     volumeStrip.refresh();
     refreshBars();
@@ -867,6 +871,7 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
         }
     }
     wave.setVisible (editing);
+    editStrip.setVisible (editing);
     for (auto* k : editKnobs)
         k->setVisible (editing);
     scOn.setVisible (sc);
@@ -936,6 +941,7 @@ void HKR5AudioProcessorEditor::bindEditLane()
     };
     for (int i = 0; i < editKnobs.size() && i < 7; ++i)
         editKnobs[i]->attach (proc.apvts, knobs[i]);
+    editStrip.bind (ln);
     waveDirty = true;
 }
 

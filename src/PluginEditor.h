@@ -189,6 +189,7 @@ private:
     juce::Label pageLabel;
     WaveView wave;
     juce::OwnedArray<Knob> editKnobs;
+    MixerPage::Strip editStrip { proc, 0 };
     AboutBox aboutBox;
     int editorPage = 0;
     int stepPage = 0;
