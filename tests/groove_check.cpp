@@ -260,6 +260,90 @@ int main()
             return late;
         };
         assert (lateAt (1.f) > lateAt (0.f));
+
+        // One accented hit, all knobs at kit spec (drive optional).
+        auto shot = [&] (double rate, int k, int lane, int n, float driveAmt, float* buf)
+        {
+            v.prepare (rate);
+            int kits[numLanes];
+            float half[numLanes];
+            float drive[numLanes];
+            for (int i = 0; i < numLanes; ++i)
+            {
+                kits[i] = k;
+                half[i] = 0.5f;
+                drive[i] = driveAmt;
+            }
+            v.setKit (kits);
+            v.setTune (zeroTune);
+            v.setEdit (half, half, half, half, half, drive);
+            v.trigger (lane, true);
+            for (int i = 0; i < n; ++i)
+            {
+                v.process (lanes);
+                buf[i] = lanes[lane];
+            }
+        };
+        static float a[96000 * 2];
+        static float b[96000 * 2];
+
+        // Same hit at 44.1k and 96k: energy in 20 ms windows over 200 ms must match.
+        // Old engine used per-sample decay multipliers, so 96k hits were half as long.
+        for (int lane : { chh, ohh, cowbell })
+        {
+            shot (44100.0, kit808, lane, 8820, 0.f, a);
+            shot (96000.0, kit808, lane, 19200, 0.f, b);
+            for (int w = 0; w < 10; ++w)
+            {
+                double ea = 0.0, eb = 0.0;
+                for (int i = w * 882; i < (w + 1) * 882; ++i)
+                    ea += a[i] * a[i] / 44100.0;
+                for (int i = w * 1920; i < (w + 1) * 1920; ++i)
+                    eb += b[i] * b[i] / 96000.0;
+                if (ea + eb > 1e-7)
+                    assert (std::abs (ea - eb) / (ea + eb) < 0.15);
+            }
+        }
+
+        // Kits must not be the same sound with new numbers: per lane, every
+        // pair of kits differs in energy or zero-crossing rate by >= 10%.
+        for (int lane = 0; lane < numLanes; ++lane)
+        {
+            float en[numKits], zc[numKits];
+            for (int k = 0; k < numKits; ++k)
+            {
+                shot (44100.0, k, lane, 44100, 0.f, a);
+                double e = 0.0;
+                int z = 0;
+                for (int i = 0; i < 44100; ++i)
+                {
+                    e += a[i] * a[i];
+                    if (i > 0 && (a[i] >= 0.f) != (a[i - 1] >= 0.f) && std::abs (a[i]) > 1e-4f)
+                        ++z;
+                }
+                en[k] = (float) e;
+                zc[k] = (float) z;
+            }
+            for (int i = 0; i < numKits; ++i)
+                for (int j = i + 1; j < numKits; ++j)
+                {
+                    const float de = std::abs (en[i] - en[j]) / (en[i] + en[j] + 1e-9f);
+                    const float dz = std::abs (zc[i] - zc[j]) / (zc[i] + zc[j] + 1e-9f);
+                    assert (de > 0.1f || dz > 0.1f);
+                }
+        }
+
+        // Every kit / lane, accent + full drive: finite and bounded.
+        for (int k = 0; k < numKits; ++k)
+            for (int lane = 0; lane < numLanes; ++lane)
+            {
+                shot (48000.0, k, lane, 48000, 1.f, a);
+                for (int i = 0; i < 48000; ++i)
+                {
+                    assert (std::isfinite (a[i]));
+                    assert (std::abs (a[i]) <= 1.5f);
+                }
+            }
     }
 
     {
