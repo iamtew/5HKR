@@ -58,6 +58,9 @@ public:
     void setPatLen (int length);
     void clearPattern();
     void randomizePattern();
+    void renderLaneShot (int lane, float* dest, int n, double sampleRate);
+    float voiceEnv (int lane) const;
+    float voiceAgeSec (int lane) const;
 
     hkr::OutputMeter& outputMeter() { return meter; }
     hkr::EqAnalyser& eqAnalyser() { return analyser; }
@@ -91,6 +94,7 @@ public:
 private:
     void parameterChanged (const juce::String& parameterID, float newValue) override;
     float raw (const char* id) const;
+    void applyVoiceParams (hkr::Voices& v) const;
     float tempoBpm() const;
     bool handleKeyTriggers (const juce::MidiBuffer& midi);
     void copySlots (hkr::SlotData dest[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank]) const;
@@ -125,6 +129,8 @@ private:
     std::atomic<int> heldKey { -1 };
     std::atomic<int> playheadUi { -1 };
     std::atomic<int> pendingAudition { -1 }; // packed (lane << 1) | accent, -1 idle
+    std::atomic<float> uiEnv[hkr::numLanes] {};
+    std::atomic<float> uiAgeSec[hkr::numLanes] {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HKR5AudioProcessor)
 };

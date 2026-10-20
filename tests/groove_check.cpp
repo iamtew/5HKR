@@ -228,6 +228,35 @@ int main()
         (void) p909chh;
         (void) lateCow;
         (void) e909chh;
+
+        auto lateAt = [&] (float decayAmt)
+        {
+            v.prepare (44100.0);
+            int kits[numLanes];
+            float decay[numLanes];
+            float half[numLanes];
+            float zeroDrive[numLanes] {};
+            for (int i = 0; i < numLanes; ++i)
+            {
+                kits[i] = kit808;
+                decay[i] = 0.5f;
+                half[i] = 0.5f;
+            }
+            decay[chh] = decayAmt;
+            v.setKit (kits);
+            v.setTune (zeroTune);
+            v.setEdit (decay, half, half, half, half, zeroDrive);
+            v.trigger (chh, true);
+            float late = 0.f;
+            for (int i = 0; i < 800; ++i)
+            {
+                v.process (lanes);
+                if (i >= 150)
+                    late += lanes[chh] * lanes[chh];
+            }
+            return late;
+        };
+        assert (lateAt (1.f) > lateAt (0.f));
     }
 
     {

@@ -21,6 +21,7 @@ struct Voices
         {
             env[i] = 0.f;
             bright[i] = 0.f;
+            age[i] = 0;
             lp[i] = 0.f;
             bp[i] = 0.f;
             for (int o = 0; o < 6; ++o)
@@ -34,6 +35,7 @@ struct Voices
             return;
         env[lane] = accent ? 1.f : 0.65f;
         bright[lane] = accent ? 1.f : 0.f;
+        age[lane] = 0;
         for (int o = 0; o < 6; ++o)
             osc[lane][o] = 0.f;
     }
@@ -50,11 +52,29 @@ struct Voices
             kit[i] = std::clamp (k[i], 0, numKits - 1);
     }
 
+    void setEdit (const float decay[numLanes], const float click[numLanes],
+                  const float hpAmt[numLanes], const float lpAmt[numLanes],
+                  const float gain[numLanes], const float drive[numLanes])
+    {
+        for (int i = 0; i < numLanes; ++i)
+        {
+            editDecay[i] = std::clamp (decay[i], 0.f, 1.f);
+            editClick[i] = std::clamp (click[i], 0.f, 1.f);
+            editHp[i] = std::clamp (hpAmt[i], 0.f, 1.f);
+            editLp[i] = std::clamp (lpAmt[i], 0.f, 1.f);
+            editGain[i] = std::clamp (gain[i], 0.f, 1.f);
+            editDrive[i] = std::clamp (drive[i], 0.f, 1.f);
+        }
+    }
+
     void process (float laneOut[numLanes])
     {
         for (int i = 0; i < numLanes; ++i)
             laneOut[i] = render (i);
     }
+
+    float envelope (int lane) const { return env[lane]; }
+    int samplesSinceTrigger (int lane) const { return age[lane]; }
 
 private:
     enum Kind : uint8_t { Noise, Metal, Tone };
@@ -89,6 +109,11 @@ private:
     float ratio (int lane) const
     {
         return std::pow (2.f, tune[lane] / 12.f);
+    }
+
+    static float around (float spec, float amt)
+    {
+        return spec * (0.4f + 1.2f * amt);
     }
 
     static constexpr float kTwoPi = 6.2831853f;
@@ -130,18 +155,23 @@ private:
     float render (int lane)
     {
         const Spec& s = kSpec[kit[lane]][lane];
-        env[lane] *= s.decay;
+        // 0.5 = kit spec. Decay exponent floor 0.5 so tails cannot hang forever.
+        env[lane] *= std::pow (s.decay, 2.f - 1.5f * editDecay[lane]);
+        ++age[lane];
         const float e = env[lane];
         const float r = ratio (lane);
-        const float hpAmt = s.hp * r * (1.f + 0.2f * bright[lane]);
+        const float hpAmt = around (s.hp, editHp[lane]) * r * (1.f + 0.2f * bright[lane]);
         float x = 0.f;
         if (s.kind == Noise)
             x = quant (noise(), s.bits);
         else
             x = mixOsc (lane, s, r);
-        x = filter (lane, x, hpAmt, s.lp);
-        x += s.click * e * e * noise();
-        return x * e * s.gain;
+        x = filter (lane, x, hpAmt, around (s.lp, editLp[lane]));
+        x += around (s.click, editClick[lane]) * e * e * noise();
+        x *= e * around (s.gain, editGain[lane]);
+        if (editDrive[lane] > 0.f)
+            x = std::tanh (x * (1.f + 4.f * editDrive[lane]));
+        return x;
     }
 
     // Inspired-by analog models. Index = Kit enum.
@@ -200,11 +230,18 @@ private:
     uint32_t rng = 1;
     int kit[numLanes] { kit808, kit808, kit808, kit808, kit808, kit808, kit808, kit808 };
     float env[numLanes] {};
+    int age[numLanes] {};
     float bright[numLanes] {};
     float osc[numLanes][6] {};
     float lp[numLanes] {};
     float bp[numLanes] {};
     float tune[numLanes] {};
+    float editDecay[numLanes] { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
+    float editClick[numLanes] { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
+    float editHp[numLanes] { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
+    float editLp[numLanes] { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
+    float editGain[numLanes] { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
+    float editDrive[numLanes] {};
 };
 
 struct Ducker

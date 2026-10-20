@@ -87,6 +87,24 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         layout.add (std::make_unique<AudioParameterFloat> (
             ParameterID { ParamID::laneSend[i], 1 },
             String (hkr::laneNames[i]) + " FX", unit, 0.f, pct (unit)));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneDecay[i], 1 },
+            String (hkr::laneNames[i]) + " Decay", unit, 0.5f, pct (unit)));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneClick[i], 1 },
+            String (hkr::laneNames[i]) + " Click", unit, 0.5f, pct (unit)));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneHp[i], 1 },
+            String (hkr::laneNames[i]) + " HPF", unit, 0.5f, pct (unit)));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneLp[i], 1 },
+            String (hkr::laneNames[i]) + " Tone", unit, 0.5f, pct (unit)));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneGain[i], 1 },
+            String (hkr::laneNames[i]) + " Level", unit, 0.5f, pct (unit)));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneDrive[i], 1 },
+            String (hkr::laneNames[i]) + " Drive", unit, 0.f, pct (unit)));
     }
 
     auto addOn = [&] (const char* id, const char* name)

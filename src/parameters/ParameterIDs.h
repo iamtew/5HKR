@@ -42,6 +42,30 @@ inline constexpr const char* laneSend[hkr::numLanes] = {
     "laneSend0", "laneSend1", "laneSend2", "laneSend3",
     "laneSend4", "laneSend5", "laneSend6", "laneSend7"
 };
+inline constexpr const char* laneDecay[hkr::numLanes] = {
+    "laneDecay0", "laneDecay1", "laneDecay2", "laneDecay3",
+    "laneDecay4", "laneDecay5", "laneDecay6", "laneDecay7"
+};
+inline constexpr const char* laneClick[hkr::numLanes] = {
+    "laneClick0", "laneClick1", "laneClick2", "laneClick3",
+    "laneClick4", "laneClick5", "laneClick6", "laneClick7"
+};
+inline constexpr const char* laneHp[hkr::numLanes] = {
+    "laneHp0", "laneHp1", "laneHp2", "laneHp3",
+    "laneHp4", "laneHp5", "laneHp6", "laneHp7"
+};
+inline constexpr const char* laneLp[hkr::numLanes] = {
+    "laneLp0", "laneLp1", "laneLp2", "laneLp3",
+    "laneLp4", "laneLp5", "laneLp6", "laneLp7"
+};
+inline constexpr const char* laneGain[hkr::numLanes] = {
+    "laneGain0", "laneGain1", "laneGain2", "laneGain3",
+    "laneGain4", "laneGain5", "laneGain6", "laneGain7"
+};
+inline constexpr const char* laneDrive[hkr::numLanes] = {
+    "laneDrive0", "laneDrive1", "laneDrive2", "laneDrive3",
+    "laneDrive4", "laneDrive5", "laneDrive6", "laneDrive7"
+};
 
 inline constexpr int fxCount = 5;
 inline constexpr const char* fxNames[fxCount] = {

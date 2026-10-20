@@ -138,6 +138,62 @@ float HKR5AudioProcessor::raw (const char* id) const
     return 0.f;
 }
 
+void HKR5AudioProcessor::applyVoiceParams (hkr::Voices& v) const
+{
+    float tune[hkr::numLanes];
+    float decay[hkr::numLanes];
+    float click[hkr::numLanes];
+    float hp[hkr::numLanes];
+    float lp[hkr::numLanes];
+    float gain[hkr::numLanes];
+    float drive[hkr::numLanes];
+    int kits[hkr::numLanes];
+    for (int i = 0; i < hkr::numLanes; ++i)
+    {
+        tune[i] = raw (ParamID::laneTune[i]);
+        decay[i] = raw (ParamID::laneDecay[i]);
+        click[i] = raw (ParamID::laneClick[i]);
+        hp[i] = raw (ParamID::laneHp[i]);
+        lp[i] = raw (ParamID::laneLp[i]);
+        gain[i] = raw (ParamID::laneGain[i]);
+        drive[i] = raw (ParamID::laneDrive[i]);
+        kits[i] = (int) raw (ParamID::laneKit[i]);
+    }
+    v.setTune (tune);
+    v.setKit (kits);
+    v.setEdit (decay, click, hp, lp, gain, drive);
+}
+
+float HKR5AudioProcessor::voiceEnv (int lane) const
+{
+    if (lane < 0 || lane >= hkr::numLanes)
+        return 0.f;
+    return uiEnv[lane].load (std::memory_order_relaxed);
+}
+
+float HKR5AudioProcessor::voiceAgeSec (int lane) const
+{
+    if (lane < 0 || lane >= hkr::numLanes)
+        return 0.f;
+    return uiAgeSec[lane].load (std::memory_order_relaxed);
+}
+
+void HKR5AudioProcessor::renderLaneShot (int lane, float* dest, int n, double sampleRate)
+{
+    if (dest == nullptr || n <= 0 || lane < 0 || lane >= hkr::numLanes)
+        return;
+    hkr::Voices v;
+    v.prepare (sampleRate);
+    applyVoiceParams (v);
+    v.trigger (lane, true);
+    float lanes[hkr::numLanes];
+    for (int i = 0; i < n; ++i)
+    {
+        v.process (lanes);
+        dest[i] = lanes[lane];
+    }
+}
+
 float HKR5AudioProcessor::tempoBpm() const
 {
     if (wrapperType != juce::AudioProcessor::wrapperType_Standalone)
@@ -304,21 +360,16 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     snapSlot (currentBank(), currentPattern(), slot);
 
     float swing[hkr::numLanes];
-    float tune[hkr::numLanes];
     float sendAmt[hkr::numLanes];
-    int kits[hkr::numLanes];
     uint8_t enabled = 0;
     for (int i = 0; i < hkr::numLanes; ++i)
     {
         swing[i] = raw (ParamID::laneSwing[i]);
-        tune[i] = raw (ParamID::laneTune[i]);
         sendAmt[i] = raw (ParamID::laneSend[i]);
-        kits[i] = (int) raw (ParamID::laneKit[i]);
         if (raw (ParamID::laneOn[i]) >= 0.5f)
             enabled = (uint8_t) (enabled | (1u << i));
     }
-    voices.setTune (tune);
-    voices.setKit (kits);
+    applyVoiceParams (voices);
 
     hkr::Hit hits[64];
     const int n = out.getNumSamples();
@@ -372,6 +423,14 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             r[i] = dry;
         if (sR != nullptr)
             sR[i] = snd;
+    }
+
+    const float invSr = 1.f / (float) (getSampleRate() > 1.0 ? getSampleRate() : 44100.0);
+    for (int ln = 0; ln < hkr::numLanes; ++ln)
+    {
+        uiEnv[ln].store (voices.envelope (ln), std::memory_order_relaxed);
+        uiAgeSec[ln].store ((float) voices.samplesSinceTrigger (ln) * invSr,
+                            std::memory_order_relaxed);
     }
 
     auto sendView = juce::AudioBuffer<float> (sendBuf.getArrayOfWritePointers(),
