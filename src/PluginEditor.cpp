@@ -33,8 +33,14 @@ constexpr int kMenuImport = 5;
 constexpr int kMenuFiles = 100;
 } // namespace
 
-HKR5AudioProcessorEditor::Knob::Knob (juce::AudioProcessorValueTreeState& st,
-                                      const juce::String& id, const juce::String& name)
+void HKR5AudioProcessorEditor::Knob::attach (juce::AudioProcessorValueTreeState& st,
+                                            const juce::String& id)
+{
+    att.reset();
+    att = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (st, id, slider);
+}
+
+HKR5AudioProcessorEditor::Knob::Knob (const juce::String& name)
 {
     label.setText (name, juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
@@ -46,7 +52,13 @@ HKR5AudioProcessorEditor::Knob::Knob (juce::AudioProcessorValueTreeState& st,
     slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
     slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     addAndMakeVisible (slider);
-    att = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (st, id, slider);
+}
+
+HKR5AudioProcessorEditor::Knob::Knob (juce::AudioProcessorValueTreeState& st,
+                                      const juce::String& id, const juce::String& name)
+    : Knob (name)
+{
+    attach (st, id);
 }
 
 void HKR5AudioProcessorEditor::Knob::resized()
@@ -68,6 +80,8 @@ HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln
     kitAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
         ed.proc.apvts, ParamID::laneKit[ln], kitBox);
     addAndMakeVisible (kitBox);
+    editBtn.onClick = [this] { editor.openSoundEdit (lane); };
+    addAndMakeVisible (editBtn);
 
     auto setupKnob = [this] (juce::Slider& s, juce::Label& lab)
     {
@@ -110,6 +124,7 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
     auto drum = r.removeFromLeft (64).reduced (1);
     onBtn.setBounds (drum.removeFromTop (drum.getHeight() / 2));
     kitBox.setBounds (drum);
+    editBtn.setBounds (r.removeFromLeft (44).reduced (2, 6));
     auto place = [] (juce::Slider& s, juce::Label& lab, juce::Rectangle<int> col)
     {
         lab.setBounds (col.removeFromBottom (12));
@@ -569,6 +584,35 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
         content.addAndMakeVisible (row);
     }
 
+    content.addChildComponent (wave);
+    gridBtn.onClick = [this] { leaveSoundEdit(); };
+    content.addChildComponent (gridBtn);
+    for (int i = 0; i < hkr::numLanes; ++i)
+    {
+        lanePick[i].setButtonText (hkr::laneNames[i]);
+        lanePick[i].onClick = [this, i]
+        {
+            openSoundEdit (i);
+        };
+        content.addChildComponent (lanePick[i]);
+    }
+    editKitLabel.setText ("Kit", juce::dontSendNotification);
+    editKitLabel.setJustificationType (juce::Justification::centred);
+    editKitLabel.setColour (juce::Label::textColourId, kCyan);
+    content.addChildComponent (editKitLabel);
+    for (int i = 0; i < hkr::numKits; ++i)
+        editKitBox.addItem (hkr::kitNames[i], i + 1);
+    content.addChildComponent (editKitBox);
+    static constexpr const char* kEditNames[] = {
+        "Tune", "Decay", "Click", "Drive", "HPF", "Tone", "Level"
+    };
+    for (auto* name : kEditNames)
+    {
+        auto* k = editKnobs.add (new Knob (name));
+        content.addChildComponent (k);
+    }
+    listenLaneParams (true);
+
     scOnAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         proc.apvts, ParamID::scOn, scOn);
     scListenAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
@@ -614,6 +658,7 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
 
 HKR5AudioProcessorEditor::~HKR5AudioProcessorEditor()
 {
+    listenLaneParams (false);
     stopTimer();
     setLookAndFeel (nullptr);
 }
@@ -663,16 +708,45 @@ void HKR5AudioProcessorEditor::layoutContent()
     patchBar.setBounds (title.removeFromLeft (barW).reduced (6, 2));
     bankBar.setBounds (title.reduced (6, 2));
 
-    auto tools = r.removeFromTop (28);
-    bankBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
-    patBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
-    clearBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
-    randomBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
-    auto mid = tools.withSizeKeepingCentre (90 + 28 + 72 + 28, tools.getHeight());
-    lenBox.setBounds (mid.removeFromLeft (90).reduced (2, 2));
-    pageLeft.setBounds (mid.removeFromLeft (28).reduced (2, 2));
-    pageLabel.setBounds (mid.removeFromLeft (72));
-    pageRight.setBounds (mid.removeFromLeft (28).reduced (2, 2));
+    const bool editing = editorPage == 0 && editLane >= 0;
+    if (! editing)
+    {
+        auto tools = r.removeFromTop (28);
+        bankBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
+        patBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
+        clearBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
+        randomBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
+        auto mid = tools.withSizeKeepingCentre (90 + 28 + 72 + 28, tools.getHeight());
+        lenBox.setBounds (mid.removeFromLeft (90).reduced (2, 2));
+        pageLeft.setBounds (mid.removeFromLeft (28).reduced (2, 2));
+        pageLabel.setBounds (mid.removeFromLeft (72));
+        pageRight.setBounds (mid.removeFromLeft (28).reduced (2, 2));
+    }
+    else
+    {
+        auto left = r.removeFromLeft (72);
+        gridBtn.setBounds (left.removeFromTop (24).reduced (1, 1));
+        const int bh = juce::jmax (1, left.getHeight() / hkr::numLanes);
+        for (int i = 0; i < hkr::numLanes; ++i)
+            lanePick[i].setBounds (left.removeFromTop (bh).reduced (1, 1));
+        wave.setBounds (r.removeFromTop (110).reduced (0, 4));
+        r.removeFromTop (6);
+        const int cols = 4;
+        const int rowsN = 2;
+        const int cellW = juce::jmax (1, r.getWidth() / cols);
+        const int cellH = juce::jmax (1, r.getHeight() / rowsN);
+        auto cell = [&] (int i)
+        {
+            return juce::Rectangle<int> (r.getX() + (i % cols) * cellW,
+                                         r.getY() + (i / cols) * cellH,
+                                         cellW, cellH);
+        };
+        auto kitR = cell (0);
+        editKitLabel.setBounds (kitR.removeFromTop (kLabelH));
+        editKitBox.setBounds (kitR.reduced (8, 10));
+        for (int i = 0; i < editKnobs.size(); ++i)
+            editKnobs[i]->setBounds (cell (i + 1));
+    }
 
     auto sc = r;
     auto scToggles = sc.removeFromTop (28);
@@ -698,6 +772,20 @@ void HKR5AudioProcessorEditor::layoutContent()
 
 void HKR5AudioProcessorEditor::timerCallback()
 {
+    if (editLane >= 0)
+    {
+        if (waveDirty)
+            rebuildWave();
+        const float env = proc.voiceEnv (editLane);
+        const float age = proc.voiceAgeSec (editLane);
+        const float dur = juce::jmax (0.001f, wave.durSec);
+        const float x01 = env > 0.002f ? age / dur : -1.f;
+        if (x01 != wave.play01)
+        {
+            wave.play01 = x01;
+            wave.repaint();
+        }
+    }
     volumeStrip.refresh();
     refreshBars();
     refreshGrid();
@@ -739,26 +827,41 @@ juce::Rectangle<int> HKR5AudioProcessorEditor::titleHitBounds() const
 void HKR5AudioProcessorEditor::setEditorPage (int page)
 {
     editorPage = juce::jlimit (0, kPageCount - 1, page);
+    if (editorPage != 0)
+    {
+        editLane = -1;
+        startTimerHz (20);
+    }
     pageBar.setText (kPageNames[editorPage]);
-    applyPageVisibility();
+    layoutContent();
 }
 
 void HKR5AudioProcessorEditor::applyPageVisibility()
 {
     const bool main = editorPage == 0;
+    const bool editing = main && editLane >= 0;
+    const bool grid = main && ! editing;
     const bool fx = editorPage == 1;
     const bool eq = editorPage == 2;
     const bool sc = editorPage == 3;
-    bankBox.setVisible (main);
-    patBox.setVisible (main);
-    lenBox.setVisible (main);
-    pageLeft.setVisible (main);
-    pageRight.setVisible (main);
-    pageLabel.setVisible (main);
-    randomBtn.setVisible (main);
-    clearBtn.setVisible (main);
+    bankBox.setVisible (grid);
+    patBox.setVisible (grid);
+    lenBox.setVisible (grid);
+    pageLeft.setVisible (grid);
+    pageRight.setVisible (grid);
+    pageLabel.setVisible (grid);
+    randomBtn.setVisible (grid);
+    clearBtn.setVisible (grid);
     for (auto* row : rows)
-        row->setVisible (main);
+        row->setVisible (grid);
+    wave.setVisible (editing);
+    gridBtn.setVisible (editing);
+    editKitLabel.setVisible (editing);
+    editKitBox.setVisible (editing);
+    for (int i = 0; i < hkr::numLanes; ++i)
+        lanePick[i].setVisible (editing);
+    for (auto* k : editKnobs)
+        k->setVisible (editing);
     scOn.setVisible (sc);
     scListen.setVisible (sc);
     scSpec.setVisible (sc);
@@ -768,6 +871,133 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     eqPage.setVisible (eq);
     if (fx)
         effectsPage.refresh();
+}
+
+void HKR5AudioProcessorEditor::listenLaneParams (bool on)
+{
+    auto one = [this, on] (const char* const* group)
+    {
+        for (int i = 0; i < hkr::numLanes; ++i)
+        {
+            if (on)
+                proc.apvts.addParameterListener (group[i], this);
+            else
+                proc.apvts.removeParameterListener (group[i], this);
+        }
+    };
+    one (ParamID::laneKit);
+    one (ParamID::laneTune);
+    one (ParamID::laneDecay);
+    one (ParamID::laneClick);
+    one (ParamID::laneHp);
+    one (ParamID::laneLp);
+    one (ParamID::laneGain);
+    one (ParamID::laneDrive);
+}
+
+void HKR5AudioProcessorEditor::parameterChanged (const juce::String&, float)
+{
+    waveDirty = true;
+}
+
+void HKR5AudioProcessorEditor::openSoundEdit (int lane)
+{
+    editLane = juce::jlimit (0, hkr::numLanes - 1, lane);
+    bindEditLane();
+    proc.audition (editLane, false);
+    startTimerHz (50);
+    layoutContent();
+}
+
+void HKR5AudioProcessorEditor::leaveSoundEdit()
+{
+    editLane = -1;
+    startTimerHz (20);
+    layoutContent();
+}
+
+void HKR5AudioProcessorEditor::bindEditLane()
+{
+    if (editLane < 0)
+        return;
+    const int ln = editLane;
+    editKitAtt.reset();
+    editKitAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
+        proc.apvts, ParamID::laneKit[ln], editKitBox);
+    const char* knobs[] = {
+        ParamID::laneTune[ln], ParamID::laneDecay[ln], ParamID::laneClick[ln],
+        ParamID::laneDrive[ln], ParamID::laneHp[ln], ParamID::laneLp[ln],
+        ParamID::laneGain[ln]
+    };
+    for (int i = 0; i < editKnobs.size() && i < 7; ++i)
+        editKnobs[i]->attach (proc.apvts, knobs[i]);
+    for (int i = 0; i < hkr::numLanes; ++i)
+    {
+        const bool sel = i == ln;
+        lanePick[i].setColour (juce::TextButton::buttonColourId,
+                               sel ? kMagenta : kDark.brighter (0.12f));
+        lanePick[i].setColour (juce::TextButton::textColourOffId, sel ? kWhite : kCyan);
+    }
+    waveDirty = true;
+}
+
+void HKR5AudioProcessorEditor::rebuildWave()
+{
+    waveDirty = false;
+    if (editLane < 0)
+        return;
+    const int n = 1024;
+    std::vector<float> full (44100);
+    proc.renderLaneShot (editLane, full.data(), (int) full.size(), 44100.0);
+
+    int last = (int) full.size() - 1;
+    while (last > 64 && std::abs (full[(size_t) last]) < 0.002f)
+        --last;
+    last = juce::jmax (64, last);
+    wave.durSec = (float) last / 44100.f;
+
+    wave.samples.resize ((size_t) n);
+    for (int i = 0; i < n; ++i)
+    {
+        const int src = (int) ((double) i / (double) (n - 1) * (double) last);
+        wave.samples[(size_t) i] = juce::jlimit (-1.f, 1.f, full[(size_t) src]);
+    }
+    wave.repaint();
+}
+
+void HKR5AudioProcessorEditor::WaveView::paint (juce::Graphics& g)
+{
+    auto r = getLocalBounds().toFloat();
+    g.setColour (kDark);
+    g.fillRoundedRectangle (r, 4.f);
+    g.setColour (kMetal.withAlpha (0.25f));
+    g.drawRoundedRectangle (r.reduced (0.5f), 4.f, 1.f);
+
+    if (samples.size() < 2)
+        return;
+
+    const float mid = r.getCentreY();
+    const float amp = r.getHeight() * 0.42f;
+    juce::Path p;
+    const int n = (int) samples.size();
+    for (int i = 0; i < n; ++i)
+    {
+        const float x = r.getX() + (float) i / (float) (n - 1) * r.getWidth();
+        const float y = mid - samples[(size_t) i] * amp;
+        if (i == 0)
+            p.startNewSubPath (x, y);
+        else
+            p.lineTo (x, y);
+    }
+    g.setColour (kCyan);
+    g.strokePath (p, juce::PathStrokeType (1.2f));
+
+    if (play01 >= 0.f && play01 <= 1.f)
+    {
+        const float x = r.getX() + play01 * r.getWidth();
+        g.setColour (kMagenta);
+        g.drawLine (x, r.getY() + 2.f, x, r.getBottom() - 2.f, 1.5f);
+    }
 }
 
 void HKR5AudioProcessorEditor::contentMouseUp (const juce::MouseEvent& e)

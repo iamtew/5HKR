@@ -9,7 +9,8 @@
 
 class HKR5AudioProcessorEditor : public juce::AudioProcessorEditor,
                                  public juce::DragAndDropContainer,
-                                 private juce::Timer
+                                 private juce::Timer,
+                                 private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     explicit HKR5AudioProcessorEditor (HKR5AudioProcessor&);
@@ -42,6 +43,12 @@ private:
     void setEditorPage (int page);
     void applyPageVisibility();
     void refreshGrid();
+    void parameterChanged (const juce::String&, float) override;
+    void openSoundEdit (int lane);
+    void leaveSoundEdit();
+    void bindEditLane();
+    void rebuildWave();
+    void listenLaneParams (bool on);
 
     HKR5AudioProcessor& proc;
 
@@ -92,10 +99,20 @@ private:
     struct Knob : public juce::Component
     {
         Knob (juce::AudioProcessorValueTreeState& st, const juce::String& id, const juce::String& name);
+        explicit Knob (const juce::String& name);
+        void attach (juce::AudioProcessorValueTreeState& st, const juce::String& id);
         void resized() override;
         juce::Label label;
         juce::Slider slider;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> att;
+    };
+
+    struct WaveView : public juce::Component
+    {
+        void paint (juce::Graphics& g) override;
+        std::vector<float> samples;
+        float durSec = 1.f;
+        float play01 = -1.f;
     };
 
     struct LaneRow : public juce::Component
@@ -113,6 +130,7 @@ private:
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> onAtt;
         juce::ComboBox kitBox;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> kitAtt;
+        juce::TextButton editBtn { "Edit" };
         juce::Slider swing;
         juce::Label swingLabel;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> swingAtt;
@@ -163,9 +181,18 @@ private:
     juce::TextButton pageLeft { "<" }, pageRight { ">" };
     juce::TextButton randomBtn { "Random" }, clearBtn { "Clear" };
     juce::Label pageLabel;
+    WaveView wave;
+    juce::TextButton gridBtn { "Grid" };
+    juce::TextButton lanePick[hkr::numLanes];
+    juce::Label editKitLabel;
+    juce::ComboBox editKitBox;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> editKitAtt;
+    juce::OwnedArray<Knob> editKnobs;
     AboutBox aboutBox;
     int editorPage = 0;
     int stepPage = 0;
+    int editLane = -1;
+    bool waveDirty = true;
     std::unique_ptr<juce::FileChooser> chooser;
     juce::Image logo;
 
