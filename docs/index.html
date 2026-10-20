@@ -12,6 +12,8 @@
     <a class="brand" href="#top"><img src="logo.png" alt="" width="36" height="36">5HKR</a>
     <nav>
       <a href="#main">Main</a>
+      <a href="#effects">Effects</a>
+      <a href="#eq">EQ</a>
       <a href="#sidechain">Sidechain</a>
       <a href="notes.html?doc=MANUAL.md">Manual</a>
       <a href="#notes">Notes</a>
@@ -26,7 +28,7 @@
         <p class="tag">Shaker. Perc groove box.</p>
       </div>
     </div>
-    <p>Eight synth lanes on a 16th-note grid, pattern banks, per-lane swing and loop length, and a sidechain duck. Not a sample player.</p>
+    <p>Eight synth lanes on a 16th-note grid, pattern banks, per-lane swing and FX send, delay / reverb / chorus / flanger / phaser, post EQ, and a sidechain duck. Not a sample player.</p>
     <p class="actions">
       <a class="download" href="https://github.com/iamtew/5HKR/releases/latest">Download</a>
       <a href="https://github.com/iamtew/5HKR">GitHub</a>
@@ -35,16 +37,34 @@
 
     <section id="main" class="card">
       <h2>Main</h2>
-      <p>CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. Click a cell off → on (cyan) → accent (magenta). Right-click sets that lane’s loop end. Tune ±12 st and swing per lane. Length 1 / 2 / 4 bars.</p>
+      <p>CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes. The kit menu picks 707 / 808 / 909 / Linn for that lane. Click a cell off → on (cyan) → accent (magenta). Right-click sets that lane’s loop end. Tune, swing, and FX send per lane. Bank / Pat, length 1 / 2 / 4 bars, Random / Clear.</p>
       <figure>
         <img class="shot" src="main.png" alt="5HKR main page: eight lanes and step grid">
         <figcaption>Main — lanes, grid, bank / pattern / length.</figcaption>
       </figure>
     </section>
 
+    <section id="effects" class="card">
+      <h2>Effects</h2>
+      <p>Click a name in the left rail to turn it on. Drag rails to reorder. Chorus, Delay, Flanger, Phaser, Reverb, each with its own Mix. Lane FX must be up or the chain is silent.</p>
+      <figure>
+        <img class="shot" src="effects.png" alt="5HKR effects page with delay and reverb">
+        <figcaption>Effects — Delay and Reverb in the chain.</figcaption>
+      </figure>
+    </section>
+
+    <section id="eq" class="card">
+      <h2>EQ</h2>
+      <p>Post-effects 5-band EQ. Toggle EQ, drag nodes for frequency and gain, scroll for Q. The inspector sits on the left.</p>
+      <figure>
+        <img class="shot" src="eq.png" alt="5HKR five-band EQ page">
+        <figcaption>EQ — five bands after the effects chain.</figcaption>
+      </figure>
+    </section>
+
     <section id="sidechain" class="card">
       <h2>Sidechain</h2>
-      <p>Ducks the lanes from the plugin audio input. Sidechain off by default. HP / LP pick the key, Listen previews it. Thresh, Amount, Attack, Release, Mix. Title bar chevrons cycle Main and Sidechain. Click <strong>5HKR</strong> for About.</p>
+      <p>Ducks the lanes from the plugin audio input. Off until you turn it on. HP / LP pick the key, Listen previews it. Thresh, Amount, Attack, Release, Mix. The plot under the knobs is that filtered key. Title bar chevrons cycle the pages. Click <strong>5HKR</strong> for About.</p>
       <figure>
         <img class="shot" src="sidechain.png" alt="5HKR sidechain page">
         <figcaption>Sidechain — duck from the audio input.</figcaption>

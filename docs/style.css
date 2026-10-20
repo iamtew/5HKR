@@ -41,7 +41,7 @@ header {
   text-decoration: none;
 }
 
-nav { display: flex; gap: 0.4rem; }
+nav { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 
 nav a {
   color: var(--cyan);
