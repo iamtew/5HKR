@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace
@@ -31,6 +32,19 @@ constexpr int kMenuSaveAs = 3;
 constexpr int kMenuExport = 4;
 constexpr int kMenuImport = 5;
 constexpr int kMenuFiles = 100;
+
+bool isAudioFile (const juce::String& path)
+{
+    return juce::File (path).hasFileExtension ("wav;aif;aiff;flac;ogg");
+}
+
+const juce::File firstAudioFile (const juce::StringArray& files)
+{
+    for (const auto& f : files)
+        if (isAudioFile (f))
+            return juce::File (f);
+    return {};
+}
 } // namespace
 
 void HKR5AudioProcessorEditor::Knob::attach (juce::AudioProcessorValueTreeState& st,
@@ -156,6 +170,11 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
 
 void HKR5AudioProcessorEditor::LaneRow::paint (juce::Graphics& g)
 {
+    if (hot)
+    {
+        g.setColour (kCyan.withAlpha (0.22f));
+        g.fillRoundedRectangle (getLocalBounds().toFloat().reduced (1.f), 3.f);
+    }
     if (compact)
         return;
     for (int i = 0; i < 16; ++i)
@@ -206,6 +225,32 @@ void HKR5AudioProcessorEditor::LaneRow::mouseDown (const juce::MouseEvent& e)
         editor.refreshGrid();
         return;
     }
+}
+
+bool HKR5AudioProcessorEditor::LaneRow::isInterestedInFileDrag (const juce::StringArray& files)
+{
+    return firstAudioFile (files).existsAsFile();
+}
+
+void HKR5AudioProcessorEditor::LaneRow::fileDragEnter (const juce::StringArray&, int, int)
+{
+    hot = true;
+    repaint();
+}
+
+void HKR5AudioProcessorEditor::LaneRow::fileDragExit (const juce::StringArray&)
+{
+    hot = false;
+    repaint();
+}
+
+void HKR5AudioProcessorEditor::LaneRow::filesDropped (const juce::StringArray& files, int, int)
+{
+    hot = false;
+    repaint();
+    const auto file = firstAudioFile (files);
+    if (file.existsAsFile())
+        editor.loadSampleFile (lane, file);
 }
 
 void HKR5AudioProcessorEditor::LaneRow::refresh (const hkr::SlotData& slot, int playhead, int page)
@@ -605,7 +650,11 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
     }
 
     content.addChildComponent (wave);
+    wave.editor = this;
     content.addChildComponent (editStrip);
+    content.addChildComponent (editLoad);
+    content.addChildComponent (editReverse);
+    editLoad.onClick = [this] { chooseLaneSample(); };
     static constexpr const char* kEditNames[] = {
         "Tune", "Decay", "Click", "Drive", "HPF", "Tone", "Level"
     };
@@ -747,10 +796,23 @@ void HKR5AudioProcessorEditor::layoutContent()
         body.removeFromRight (6);
         wave.setBounds (body.removeFromTop (250));
         body.removeFromTop (8);
-        const int cellW = juce::jmax (1, body.getWidth() / juce::jmax (1, editKnobs.size()));
         auto knobRow = body.removeFromTop (juce::jmin (body.getHeight(), 200));
+        if (editIsSample)
+        {
+            editLoad.setBounds (knobRow.removeFromLeft (76).reduced (4, 36));
+            editReverse.setBounds (knobRow.removeFromLeft (88).reduced (4, 36));
+        }
+        int shown = 0;
         for (int i = 0; i < editKnobs.size(); ++i)
-            editKnobs[i]->setBounds (knobRow.removeFromLeft (cellW));
+            if (! editIsSample || i == 0 || i == 1 || i == 2 || i == 6)
+                ++shown;
+        const int cellW = juce::jmax (1, knobRow.getWidth() / juce::jmax (1, shown));
+        for (int i = 0; i < editKnobs.size(); ++i)
+        {
+            const bool show = ! editIsSample || i == 0 || i == 1 || i == 2 || i == 6;
+            if (show)
+                editKnobs[i]->setBounds (knobRow.removeFromLeft (cellW));
+        }
     }
 
     auto sc = r;
@@ -872,8 +934,14 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     }
     wave.setVisible (editing);
     editStrip.setVisible (editing);
-    for (auto* k : editKnobs)
-        k->setVisible (editing);
+    const bool sampleEdit = editing && editIsSample;
+    editLoad.setVisible (sampleEdit);
+    editReverse.setVisible (sampleEdit);
+    for (int i = 0; i < editKnobs.size(); ++i)
+    {
+        const bool show = editing && (! sampleEdit || i == 0 || i == 1 || i == 2 || i == 6);
+        editKnobs[i]->setVisible (show);
+    }
     scOn.setVisible (sc);
     scListen.setVisible (sc);
     scSpec.setVisible (sc);
@@ -906,11 +974,22 @@ void HKR5AudioProcessorEditor::listenLaneParams (bool on)
     one (ParamID::laneLp);
     one (ParamID::laneGain);
     one (ParamID::laneDrive);
+    one (ParamID::laneSampStart);
+    one (ParamID::laneSampEnd);
+    one (ParamID::laneSampRev);
 }
 
 void HKR5AudioProcessorEditor::parameterChanged (const juce::String&, float)
 {
     waveDirty = true;
+    if (bindingEdit || editLane < 0)
+        return;
+    const bool sample = laneIsSample (editLane);
+    if (sample != editIsSample)
+    {
+        bindEditLane();
+        layoutContent();
+    }
 }
 
 void HKR5AudioProcessorEditor::openSoundEdit (int lane)
@@ -934,13 +1013,39 @@ void HKR5AudioProcessorEditor::bindEditLane()
     if (editLane < 0)
         return;
     const int ln = editLane;
-    const char* knobs[] = {
+    editIsSample = laneIsSample (ln);
+    const bool sample = editIsSample;
+    static constexpr const char* kSynthNames[] = {
+        "Tune", "Decay", "Click", "Drive", "HPF", "Tone", "Level"
+    };
+    static constexpr const char* kSampleNames[] = {
+        "Tune", "Start", "End", "", "", "", "Level"
+    };
+    const char* synthIds[] = {
         ParamID::laneTune[ln], ParamID::laneDecay[ln], ParamID::laneClick[ln],
         ParamID::laneDrive[ln], ParamID::laneHp[ln], ParamID::laneLp[ln],
         ParamID::laneGain[ln]
     };
+    const char* sampleIds[] = {
+        ParamID::laneTune[ln], ParamID::laneSampStart[ln], ParamID::laneSampEnd[ln],
+        nullptr, nullptr, nullptr, ParamID::laneGain[ln]
+    };
+    bindingEdit = true;
     for (int i = 0; i < editKnobs.size() && i < 7; ++i)
-        editKnobs[i]->attach (proc.apvts, knobs[i]);
+    {
+        editKnobs[i]->label.setText (sample ? kSampleNames[i] : kSynthNames[i],
+                                     juce::dontSendNotification);
+        const char* id = sample ? sampleIds[i] : synthIds[i];
+        if (id != nullptr)
+            editKnobs[i]->attach (proc.apvts, id);
+        else
+            editKnobs[i]->att.reset();
+    }
+    editRevAtt.reset();
+    if (sample)
+        editRevAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+            proc.apvts, ParamID::laneSampRev[ln], editReverse);
+    bindingEdit = false;
     editStrip.bind (ln);
     waveDirty = true;
 }
@@ -950,6 +1055,11 @@ void HKR5AudioProcessorEditor::rebuildWave()
     waveDirty = false;
     if (editLane < 0)
         return;
+    if (laneIsSample (editLane))
+    {
+        rebuildSampleWave();
+        return;
+    }
     // ~2 px per bucket at the 250px-tall wave width; wider buckets read as a solid shape.
     const int n = 360;
     std::vector<float> full (44100);
@@ -991,13 +1101,141 @@ void HKR5AudioProcessorEditor::rebuildWave()
     wave.repaint();
 }
 
+void HKR5AudioProcessorEditor::rebuildSampleWave()
+{
+    const int nBuckets = 360;
+    std::vector<float> pcm;
+    proc.copyLaneSample (editLane, pcm);
+    float a = proc.apvts.getRawParameterValue (ParamID::laneSampStart[editLane])->load();
+    float b = proc.apvts.getRawParameterValue (ParamID::laneSampEnd[editLane])->load();
+    if (b < a)
+        std::swap (a, b);
+    const int frames = (int) pcm.size();
+    int i0 = std::clamp ((int) (a * (float) frames), 0, std::max (0, frames - 1));
+    int i1 = std::clamp ((int) (b * (float) frames), 0, frames);
+    if (frames == 0 || i1 <= i0)
+    {
+        wave.lo.assign ((size_t) nBuckets, 0.f);
+        wave.hi.assign ((size_t) nBuckets, 0.f);
+        wave.durSec = 0.001f;
+        wave.peakDb = -100.f;
+        wave.title = juce::String (hkr::laneNames[editLane]) + "  Sample";
+        wave.info = "Drop or Load";
+        wave.repaint();
+        return;
+    }
+    const float semi = proc.apvts.getRawParameterValue (ParamID::laneTune[editLane])->load();
+    const float ratio = std::pow (2.f, semi / 12.f);
+    const double fileRate = std::max (1.0, proc.laneSampleRate (editLane));
+    wave.durSec = (float) ((double) (i1 - i0) / (fileRate * (double) ratio));
+
+    float peak = 0.f;
+    for (int i = i0; i < i1; ++i)
+        peak = juce::jmax (peak, std::abs (pcm[(size_t) i]));
+    wave.peakDb = juce::Decibels::gainToDecibels (peak, -100.f);
+    const float norm = peak > 1.0e-6f ? 1.f / peak : 0.f;
+    wave.lo.assign ((size_t) nBuckets, 0.f);
+    wave.hi.assign ((size_t) nBuckets, 0.f);
+    const int span = i1 - i0;
+    for (int bucket = 0; bucket < nBuckets; ++bucket)
+    {
+        const int s0 = i0 + (int) ((double) bucket / nBuckets * span);
+        const int s1 = juce::jmax (s0 + 1, i0 + (int) ((double) (bucket + 1) / nBuckets * span));
+        float mn = 0.f, mx = 0.f;
+        for (int i = s0; i < s1 && i < i1; ++i)
+        {
+            mn = juce::jmin (mn, pcm[(size_t) i]);
+            mx = juce::jmax (mx, pcm[(size_t) i]);
+        }
+        wave.lo[(size_t) bucket] = mn * norm;
+        wave.hi[(size_t) bucket] = mx * norm;
+    }
+    const auto name = proc.laneSampleName (editLane);
+    wave.title = juce::String (hkr::laneNames[editLane]) + "  Sample";
+    wave.info = name.isEmpty() ? juce::String ("Sample") : name;
+    wave.repaint();
+}
+
+bool HKR5AudioProcessorEditor::laneIsSample (int lane) const
+{
+    if (lane < 0 || lane >= hkr::numLanes)
+        return false;
+    return (int) proc.apvts.getRawParameterValue (ParamID::laneKit[lane])->load() == hkr::kitSample;
+}
+
+void HKR5AudioProcessorEditor::loadSampleFile (int lane, const juce::File& file)
+{
+    if (! proc.loadLaneSample (lane, file))
+        return;
+    if (auto* p = proc.apvts.getParameter (ParamID::laneKit[lane]))
+    {
+        p->beginChangeGesture();
+        p->setValueNotifyingHost (p->convertTo0to1 ((float) hkr::kitSample));
+        p->endChangeGesture();
+    }
+    waveDirty = true;
+    if (editLane == lane)
+    {
+        bindEditLane();
+        layoutContent();
+    }
+}
+
+void HKR5AudioProcessorEditor::chooseLaneSample()
+{
+    if (editLane < 0)
+        return;
+    const int lane = editLane;
+    chooser = std::make_unique<juce::FileChooser> (
+        "Load Sample",
+        juce::File::getSpecialLocation (juce::File::userDocumentsDirectory),
+        "*.wav;*.aif;*.aiff;*.flac;*.ogg");
+    juce::Component::SafePointer<HKR5AudioProcessorEditor> safe (this);
+    chooser->launchAsync (juce::FileBrowserComponent::openMode
+                              | juce::FileBrowserComponent::canSelectFiles,
+                          [safe, lane] (const juce::FileChooser& c)
+                          {
+                              if (safe == nullptr)
+                                  return;
+                              const auto file = c.getResult();
+                              if (file.existsAsFile())
+                                  safe->loadSampleFile (lane, file);
+                          });
+}
+
+bool HKR5AudioProcessorEditor::WaveView::isInterestedInFileDrag (const juce::StringArray& files)
+{
+    return firstAudioFile (files).existsAsFile();
+}
+
+void HKR5AudioProcessorEditor::WaveView::fileDragEnter (const juce::StringArray&, int, int)
+{
+    hot = true;
+    repaint();
+}
+
+void HKR5AudioProcessorEditor::WaveView::fileDragExit (const juce::StringArray&)
+{
+    hot = false;
+    repaint();
+}
+
+void HKR5AudioProcessorEditor::WaveView::filesDropped (const juce::StringArray& files, int, int)
+{
+    hot = false;
+    repaint();
+    const auto file = firstAudioFile (files);
+    if (editor != nullptr && editor->editLane >= 0 && file.existsAsFile())
+        editor->loadSampleFile (editor->editLane, file);
+}
+
 void HKR5AudioProcessorEditor::WaveView::paint (juce::Graphics& g)
 {
     auto box = getLocalBounds().toFloat();
     g.setColour (kDark);
     g.fillRoundedRectangle (box, 4.f);
-    g.setColour (kMetal.withAlpha (0.25f));
-    g.drawRoundedRectangle (box.reduced (0.5f), 4.f, 1.f);
+    g.setColour (hot ? kCyan : kMetal.withAlpha (0.25f));
+    g.drawRoundedRectangle (box.reduced (0.5f), 4.f, hot ? 2.f : 1.f);
 
     auto inner = box.reduced (10.f, 0.f);
     auto header = inner.removeFromTop (22.f);

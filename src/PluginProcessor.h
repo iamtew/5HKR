@@ -11,6 +11,8 @@
 
 #include <JuceHeader.h>
 #include <atomic>
+#include <cstdint>
+#include <vector>
 
 class HKR5AudioProcessor : public juce::AudioProcessor,
                            private juce::AudioProcessorValueTreeState::Listener
@@ -64,6 +66,14 @@ public:
     float voiceAgeSec (int lane) const;
     float lanePeak (int lane) const;
 
+    // Message thread. Mono, trimmed to 4 seconds. Empty file leaves the slot as it was.
+    bool loadLaneSample (int lane, const juce::File& file);
+    void clearLaneSamples();
+    bool laneHasSample (int lane) const;
+    juce::String laneSampleName (int lane) const;
+    double laneSampleRate (int lane) const;
+    void copyLaneSample (int lane, std::vector<float>& dest) const;
+
     hkr::OutputMeter& outputMeter() { return meter; }
     hkr::EqAnalyser& eqAnalyser() { return analyser; }
     hkr::EqAnalyser& scAnalyser() { return scSpec; }
@@ -109,6 +119,26 @@ private:
     void loadFxOrderFromState();
     bool loadPatchFile (const juce::File& src, const juce::String& shownName);
     bool loadBankFile (const juce::File& src, const juce::String& shownName);
+    void publishLaneSample (int lane, std::vector<float> pcm, float rate, juce::String name, bool writeState);
+    void clearLaneSampleAudio (int lane);
+    void writeLaneSamplesToState();
+    void loadLaneSamplesFromState();
+    void pushSampleViews (hkr::Voices& v) const;
+
+    // ponytail: two buffers per lane. Message thread writes the inactive side,
+    // then flips `active`. Audio only reads. Ceiling: a second publish of the
+    // same lane in the same audio block waits out that block (about one buffer).
+    struct LaneSamp
+    {
+        std::vector<float> buf[2];
+        std::atomic<int> frames[2] { 0, 0 };
+        std::atomic<int> active { 0 };
+        std::atomic<float> fileRate { 44100.f };
+        juce::String name;
+        std::uint32_t leftEpoch[2] {};
+    };
+    LaneSamp laneSamp[hkr::numLanes];
+    std::atomic<std::uint32_t> audioEpoch { 0 };
 
     hkr::Sequencer sequencer;
     hkr::Voices voices;

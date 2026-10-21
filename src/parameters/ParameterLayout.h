@@ -106,6 +106,15 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
             ParameterID { ParamID::laneGain[i], 1 },
             String (hkr::laneNames[i]) + " Level", unit, 0.5f, pct (unit)));
         layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneSampStart[i], 1 },
+            String (hkr::laneNames[i]) + " Start", unit, 0.f, pct (unit)));
+        layout.add (std::make_unique<AudioParameterFloat> (
+            ParameterID { ParamID::laneSampEnd[i], 1 },
+            String (hkr::laneNames[i]) + " End", unit, 1.f, pct (unit)));
+        layout.add (std::make_unique<AudioParameterBool> (
+            ParameterID { ParamID::laneSampRev[i], 1 },
+            String (hkr::laneNames[i]) + " Reverse", false));
+        layout.add (std::make_unique<AudioParameterFloat> (
             ParameterID { ParamID::laneDrive[i], 1 },
             String (hkr::laneNames[i]) + " Drive", unit, 0.f, pct (unit)));
         const auto n = String (hkr::laneNames[i]);

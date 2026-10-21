@@ -305,12 +305,12 @@ int main()
             }
         }
 
-        // Kits must not be the same sound with new numbers: per lane, every
-        // pair of kits differs in energy or zero-crossing rate by >= 10%.
+        // Synth kits must not be the same sound with new numbers: per lane, every
+        // pair differs in energy or zero-crossing rate by >= 10%. Sample is separate.
         for (int lane = 0; lane < numLanes; ++lane)
         {
-            float en[numKits], zc[numKits];
-            for (int k = 0; k < numKits; ++k)
+            float en[numSynthKits], zc[numSynthKits];
+            for (int k = 0; k < numSynthKits; ++k)
             {
                 shot (44100.0, k, lane, 44100, 0.f, a);
                 double e = 0.0;
@@ -324,8 +324,8 @@ int main()
                 en[k] = (float) e;
                 zc[k] = (float) z;
             }
-            for (int i = 0; i < numKits; ++i)
-                for (int j = i + 1; j < numKits; ++j)
+            for (int i = 0; i < numSynthKits; ++i)
+                for (int j = i + 1; j < numSynthKits; ++j)
                 {
                     const float de = std::abs (en[i] - en[j]) / (en[i] + en[j] + 1e-9f);
                     const float dz = std::abs (zc[i] - zc[j]) / (zc[i] + zc[j] + 1e-9f);
@@ -344,6 +344,53 @@ int main()
                     assert (std::abs (a[i]) <= 1.5f);
                 }
             }
+    }
+
+    {
+        // Sample kit: silence with no buffer, and Start skips the front of the file.
+        Voices v;
+        v.prepare (44100.0);
+        int kits[numLanes] {};
+        float lanes[numLanes] {};
+        float tune[numLanes] {};
+        float half[numLanes];
+        float drive[numLanes] {};
+        float start[numLanes] {};
+        float end[numLanes];
+        bool rev[numLanes] {};
+        for (int i = 0; i < numLanes; ++i)
+        {
+            kits[i] = kitSample;
+            half[i] = 0.5f;
+            end[i] = 1.f;
+        }
+        v.setKit (kits);
+        v.setTune (tune);
+        v.setEdit (half, half, half, half, half, drive);
+        v.trigger (chh, true);
+        v.process (lanes);
+        assert (lanes[chh] == 0.f);
+
+        constexpr int n = 1000;
+        float pcm[n];
+        for (int i = 0; i < n; ++i)
+            pcm[i] = i < 500 ? -0.5f : 0.8f;
+        Voices::SampleView views[numLanes] {};
+        views[chh] = { pcm, n, 44100.0 };
+        start[chh] = 0.5f;
+        v.setSamples (views);
+        v.setSampleRegion (start, end, rev);
+        v.trigger (chh, true);
+        float buf[n];
+        for (int i = 0; i < n; ++i)
+        {
+            v.process (lanes);
+            buf[i] = lanes[chh];
+            assert (std::isfinite (buf[i]));
+            assert (buf[i] > -0.05f);
+        }
+        assert (buf[80] > 0.5f);
+        assert (buf[600] == 0.f);
     }
 
     {

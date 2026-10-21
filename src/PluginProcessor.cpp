@@ -2,6 +2,8 @@
 #include "PluginEditor.h"
 #include "parameters/Library.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace
@@ -10,6 +12,8 @@ const juce::Identifier kBanksXml { "BANKS_XML" };
 const juce::Identifier kPatchName { "PATCH_NAME" };
 const juce::Identifier kBankName { "BANK_NAME" };
 const juce::Identifier kFxOrder { "FX_ORDER" };
+const juce::Identifier kLaneSamples { "LANE_SAMPLES" };
+const juce::Identifier kSampKits { "sampKits" };
 constexpr const char* kInitPatch = "Init Patch";
 constexpr const char* kInitBank = "Init Bank";
 constexpr const char* kPatchExt = ".5hkrp";
@@ -47,6 +51,24 @@ juce::String legalStem (const juce::String& name)
     if (stem.endsWithIgnoreCase (kBankExt))
         stem = stem.dropLastCharacters ((int) std::strlen (kBankExt));
     return stem;
+}
+
+// laneKit was a 4-choice param (norm = index/3). Sample is the 5th (norm = index/4).
+// Old "1" was Linn. Only files from before sampKits need the remap.
+void migrateFourKits (juce::XmlElement& xml)
+{
+    if (xml.hasAttribute (kSampKits))
+        return;
+    for (int i = 0; i < hkr::numLanes; ++i)
+    {
+        const juce::String key (ParamID::laneKit[i]);
+        if (! xml.hasAttribute (key))
+            continue;
+        const float norm = (float) xml.getDoubleAttribute (key, 0.0);
+        const int index = juce::jlimit (0, hkr::numSynthKits - 1, juce::roundToInt (norm * 3.f));
+        xml.setAttribute (key, (double) index / (double) (hkr::numKits - 1));
+    }
+    xml.setAttribute (kSampKits, 1);
 }
 
 void stripPatchExtras (juce::ValueTree& t)
@@ -87,6 +109,7 @@ HKR5AudioProcessor::HKR5AudioProcessor()
 
     apvts.state.setProperty (kPatchName, kInitPatch, nullptr);
     apvts.state.setProperty (kBankName, kInitBank, nullptr);
+    apvts.state.setProperty (kSampKits, 1, nullptr);
     apvts.addParameterListener (ParamID::seqBank, this);
     apvts.addParameterListener (ParamID::seqPattern, this);
     int order[hkr::fxCount];
@@ -162,6 +185,20 @@ float HKR5AudioProcessor::raw (const char* id) const
     return 0.f;
 }
 
+void HKR5AudioProcessor::pushSampleViews (hkr::Voices& v) const
+{
+    hkr::Voices::SampleView views[hkr::numLanes];
+    for (int i = 0; i < hkr::numLanes; ++i)
+    {
+        const int side = laneSamp[i].active.load (std::memory_order_acquire);
+        const int n = laneSamp[i].frames[side].load (std::memory_order_acquire);
+        views[i].data = n > 0 ? laneSamp[i].buf[side].data() : nullptr;
+        views[i].frames = n > 0 ? n : 0;
+        views[i].fileRate = (double) laneSamp[i].fileRate.load (std::memory_order_relaxed);
+    }
+    v.setSamples (views);
+}
+
 void HKR5AudioProcessor::applyVoiceParams (hkr::Voices& v) const
 {
     float tune[hkr::numLanes];
@@ -171,6 +208,9 @@ void HKR5AudioProcessor::applyVoiceParams (hkr::Voices& v) const
     float lp[hkr::numLanes];
     float gain[hkr::numLanes];
     float drive[hkr::numLanes];
+    float start[hkr::numLanes];
+    float end[hkr::numLanes];
+    bool rev[hkr::numLanes];
     int kits[hkr::numLanes];
     for (int i = 0; i < hkr::numLanes; ++i)
     {
@@ -181,11 +221,16 @@ void HKR5AudioProcessor::applyVoiceParams (hkr::Voices& v) const
         lp[i] = raw (ParamID::laneLp[i]);
         gain[i] = raw (ParamID::laneGain[i]);
         drive[i] = raw (ParamID::laneDrive[i]);
+        start[i] = raw (ParamID::laneSampStart[i]);
+        end[i] = raw (ParamID::laneSampEnd[i]);
+        rev[i] = raw (ParamID::laneSampRev[i]) >= 0.5f;
         kits[i] = (int) raw (ParamID::laneKit[i]);
     }
     v.setTune (tune);
     v.setKit (kits);
     v.setEdit (decay, click, hp, lp, gain, drive);
+    v.setSampleRegion (start, end, rev);
+    pushSampleViews (v);
 }
 
 float HKR5AudioProcessor::voiceEnv (int lane) const
@@ -567,6 +612,7 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
     analyser.push (out);
     meter.push (out);
+    audioEpoch.fetch_add (1, std::memory_order_release);
 }
 
 void HKR5AudioProcessor::copySlots (hkr::SlotData dest[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank]) const
@@ -688,6 +734,167 @@ void HKR5AudioProcessor::moveFx (int fromType, int beforeType)
     publishFxOrder (tmp, m);
 }
 
+void HKR5AudioProcessor::clearLaneSampleAudio (int lane)
+{
+    if (lane < 0 || lane >= hkr::numLanes)
+        return;
+    laneSamp[lane].frames[0].store (0, std::memory_order_release);
+    laneSamp[lane].frames[1].store (0, std::memory_order_release);
+    laneSamp[lane].name.clear();
+}
+
+void HKR5AudioProcessor::publishLaneSample (int lane, std::vector<float> pcm, float rate,
+                                            juce::String name, bool writeState)
+{
+    if (lane < 0 || lane >= hkr::numLanes)
+        return;
+    auto& slot = laneSamp[lane];
+    const int previous = slot.active.load (std::memory_order_relaxed);
+    const int dest = previous == 0 ? 1 : 0;
+    // The in-flight block may still be reading `dest` if we left it this epoch.
+    const auto now = audioEpoch.load (std::memory_order_acquire);
+    if (slot.leftEpoch[dest] != 0 && slot.leftEpoch[dest] == now
+        && juce::MessageManager::existsAndIsCurrentThread())
+    {
+        for (int i = 0; i < 40 && audioEpoch.load (std::memory_order_acquire) == now; ++i)
+            juce::Thread::sleep (1);
+    }
+    const int n = (int) pcm.size();
+    slot.buf[dest] = std::move (pcm);
+    slot.fileRate.store (rate > 1.f ? rate : 44100.f, std::memory_order_relaxed);
+    slot.name = std::move (name);
+    slot.frames[dest].store (n, std::memory_order_release);
+    slot.leftEpoch[previous] = audioEpoch.load (std::memory_order_relaxed);
+    slot.active.store (dest, std::memory_order_release);
+    if (writeState)
+        writeLaneSamplesToState();
+}
+
+void HKR5AudioProcessor::writeLaneSamplesToState()
+{
+    auto existing = apvts.state.getChildWithName (kLaneSamples);
+    if (existing.isValid())
+        apvts.state.removeChild (existing, nullptr);
+    juce::ValueTree tree (kLaneSamples);
+    for (int lane = 0; lane < hkr::numLanes; ++lane)
+    {
+        const int side = laneSamp[lane].active.load (std::memory_order_acquire);
+        const int n = laneSamp[lane].frames[side].load (std::memory_order_acquire);
+        if (n <= 0 || laneSamp[lane].buf[side].empty())
+            continue;
+        juce::ValueTree samp ("SAMP");
+        samp.setProperty ("lane", lane, nullptr);
+        samp.setProperty ("name", laneSamp[lane].name, nullptr);
+        samp.setProperty ("rate", (double) laneSamp[lane].fileRate.load (std::memory_order_relaxed), nullptr);
+        juce::MemoryBlock mb ((size_t) n * sizeof (float));
+        std::memcpy (mb.getData(), laneSamp[lane].buf[side].data(), mb.getSize());
+        samp.setProperty ("pcm", juce::var (mb), nullptr);
+        tree.appendChild (samp, nullptr);
+    }
+    if (tree.getNumChildren() > 0)
+        apvts.state.appendChild (tree, nullptr);
+}
+
+void HKR5AudioProcessor::loadLaneSamplesFromState()
+{
+    bool keep[hkr::numLanes] {};
+    auto tree = apvts.state.getChildWithName (kLaneSamples);
+    if (tree.isValid())
+    {
+        for (int i = 0; i < tree.getNumChildren(); ++i)
+        {
+            auto samp = tree.getChild (i);
+            const int lane = (int) samp.getProperty ("lane", -1);
+            if (lane < 0 || lane >= hkr::numLanes)
+                continue;
+            auto* mb = samp.getProperty ("pcm").getBinaryData();
+            if (mb == nullptr || mb->getSize() < sizeof (float))
+                continue;
+            const int n = (int) (mb->getSize() / sizeof (float));
+            std::vector<float> pcm ((size_t) n);
+            std::memcpy (pcm.data(), mb->getData(), (size_t) n * sizeof (float));
+            const float rate = (float) (double) samp.getProperty ("rate", 44100.0);
+            publishLaneSample (lane, std::move (pcm), rate, samp.getProperty ("name").toString(), false);
+            keep[lane] = true;
+        }
+    }
+    for (int lane = 0; lane < hkr::numLanes; ++lane)
+        if (! keep[lane])
+            clearLaneSampleAudio (lane);
+}
+
+void HKR5AudioProcessor::clearLaneSamples()
+{
+    for (int lane = 0; lane < hkr::numLanes; ++lane)
+        clearLaneSampleAudio (lane);
+    auto existing = apvts.state.getChildWithName (kLaneSamples);
+    if (existing.isValid())
+        apvts.state.removeChild (existing, nullptr);
+}
+
+bool HKR5AudioProcessor::loadLaneSample (int lane, const juce::File& file)
+{
+    if (lane < 0 || lane >= hkr::numLanes || ! file.existsAsFile())
+        return false;
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+    if (reader == nullptr || reader->sampleRate < 1.0 || reader->lengthInSamples <= 0)
+        return false;
+    const auto cap64 = (juce::int64) std::llround (reader->sampleRate * 4.0);
+    const int n = (int) std::min (reader->lengthInSamples, std::max<juce::int64> (1, cap64));
+    const int chs = std::max (1, (int) reader->numChannels);
+    juce::AudioBuffer<float> tmp (chs, n);
+    if (! reader->read (&tmp, 0, n, 0, true, true))
+        return false;
+    std::vector<float> mono ((size_t) n);
+    const float inv = 1.f / (float) chs;
+    for (int i = 0; i < n; ++i)
+    {
+        float s = 0.f;
+        for (int c = 0; c < chs; ++c)
+            s += tmp.getSample (c, i);
+        mono[(size_t) i] = s * inv;
+    }
+    publishLaneSample (lane, std::move (mono), (float) reader->sampleRate,
+                       file.getFileNameWithoutExtension(), true);
+    return true;
+}
+
+bool HKR5AudioProcessor::laneHasSample (int lane) const
+{
+    if (lane < 0 || lane >= hkr::numLanes)
+        return false;
+    const int side = laneSamp[lane].active.load (std::memory_order_acquire);
+    return laneSamp[lane].frames[side].load (std::memory_order_acquire) > 0;
+}
+
+juce::String HKR5AudioProcessor::laneSampleName (int lane) const
+{
+    if (lane < 0 || lane >= hkr::numLanes)
+        return {};
+    return laneSamp[lane].name;
+}
+
+double HKR5AudioProcessor::laneSampleRate (int lane) const
+{
+    if (lane < 0 || lane >= hkr::numLanes)
+        return 44100.0;
+    return (double) laneSamp[lane].fileRate.load (std::memory_order_relaxed);
+}
+
+void HKR5AudioProcessor::copyLaneSample (int lane, std::vector<float>& dest) const
+{
+    dest.clear();
+    if (lane < 0 || lane >= hkr::numLanes)
+        return;
+    const int side = laneSamp[lane].active.load (std::memory_order_acquire);
+    const int n = laneSamp[lane].frames[side].load (std::memory_order_acquire);
+    if (n <= 0)
+        return;
+    dest.assign (laneSamp[lane].buf[side].begin(), laneSamp[lane].buf[side].begin() + n);
+}
+
 void HKR5AudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     writeBanksToState();
@@ -704,11 +911,13 @@ void HKR5AudioProcessor::setStateInformation (const void* data, int sizeInBytes)
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
         if (xml->hasTagName (apvts.state.getType()))
         {
+            migrateFourKits (*xml);
             uiScale = juce::jlimit (0.4f, 1.5f, (float) xml->getDoubleAttribute ("uiScale", uiScale));
             xml->removeAttribute ("uiScale");
             apvts.replaceState (juce::ValueTree::fromXml (*xml));
             loadBanksFromState();
             loadFxOrderFromState();
+            loadLaneSamplesFromState();
         }
 }
 
@@ -758,6 +967,7 @@ void HKR5AudioProcessor::initPatch()
     int order[hkr::fxCount];
     publishFxOrder (order, hkr::fillDefaultFxOrder (order));
     apvts.state.setProperty (kPatchName, kInitPatch, nullptr);
+    clearLaneSamples();
 }
 
 void HKR5AudioProcessor::initBank()
@@ -775,6 +985,7 @@ bool HKR5AudioProcessor::loadPatchFile (const juce::File& src, const juce::Strin
     auto xml = juce::XmlDocument::parse (src);
     if (xml == nullptr || ! xml->hasTagName (apvts.state.getType()))
         return false;
+    migrateFourKits (*xml);
     const auto banks = apvts.state.getProperty (kBanksXml);
     const auto bname = apvts.state.getProperty (kBankName);
     apvts.replaceState (juce::ValueTree::fromXml (*xml));
@@ -782,6 +993,7 @@ bool HKR5AudioProcessor::loadPatchFile (const juce::File& src, const juce::Strin
     apvts.state.setProperty (kBankName, bname, nullptr);
     apvts.state.setProperty (kPatchName, shownName, nullptr);
     loadFxOrderFromState();
+    loadLaneSamplesFromState();
     return true;
 }
 

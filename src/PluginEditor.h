@@ -49,7 +49,11 @@ private:
     void leaveSoundEdit();
     void bindEditLane();
     void rebuildWave();
+    void rebuildSampleWave();
     void listenLaneParams (bool on);
+    void loadSampleFile (int lane, const juce::File& file);
+    void chooseLaneSample();
+    bool laneIsSample (int lane) const;
 
     HKR5AudioProcessor& proc;
 
@@ -109,9 +113,16 @@ private:
         int labelH = 12;
     };
 
-    struct WaveView : public juce::Component
+    struct WaveView : public juce::Component,
+                      public juce::FileDragAndDropTarget
     {
         void paint (juce::Graphics& g) override;
+        bool isInterestedInFileDrag (const juce::StringArray& files) override;
+        void fileDragEnter (const juce::StringArray&, int, int) override;
+        void fileDragExit (const juce::StringArray&) override;
+        void filesDropped (const juce::StringArray& files, int, int) override;
+        HKR5AudioProcessorEditor* editor = nullptr;
+        bool hot = false;
         std::vector<float> lo, hi; // per-bucket min/max, normalised to the shot's peak
         float durSec = 1.f;
         float play01 = -1.f;
@@ -119,12 +130,17 @@ private:
         juce::String title, info;
     };
 
-    struct LaneRow : public juce::Component
+    struct LaneRow : public juce::Component,
+                     public juce::FileDragAndDropTarget
     {
         LaneRow (HKR5AudioProcessorEditor& ed, int lane);
         void resized() override;
         void paint (juce::Graphics& g) override;
         void mouseDown (const juce::MouseEvent& e) override;
+        bool isInterestedInFileDrag (const juce::StringArray& files) override;
+        void fileDragEnter (const juce::StringArray&, int, int) override;
+        void fileDragExit (const juce::StringArray&) override;
+        void filesDropped (const juce::StringArray& files, int, int) override;
         void refresh (const hkr::SlotData& slot, int playhead, int page);
         void refreshKnobLabels();
 
@@ -149,6 +165,7 @@ private:
         int values[16] {};
         int play = -1;
         int loopCell = -1;
+        bool hot = false;
     };
 
     struct AboutBox : public juce::Component
@@ -189,11 +206,16 @@ private:
     juce::Label pageLabel;
     WaveView wave;
     juce::OwnedArray<Knob> editKnobs;
+    juce::TextButton editLoad { "Load" };
+    juce::ToggleButton editReverse { "Reverse" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> editRevAtt;
     MixerPage::Strip editStrip { proc, 0 };
     AboutBox aboutBox;
     int editorPage = 0;
     int stepPage = 0;
     int editLane = -1;
+    bool editIsSample = false;
+    bool bindingEdit = false;
     bool waveDirty = true;
     std::unique_ptr<juce::FileChooser> chooser;
     juce::Image logo;

@@ -1,6 +1,6 @@
 # 5HKR manual
 
-Perc groove box. Eight synth lanes, not a sample player. The groove runs while a mapped MIDI key is held.
+Perc groove box. Eight synth lanes, plus one one-shot sample per lane. The groove runs while a mapped MIDI key is held.
 
 ## Pages
 
@@ -12,12 +12,12 @@ Click **5HKR** + version in the top left for About.
 
 ## Grid (Main)
 
-Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that voice. The kit menu under the name picks 707 / 808 / 909 / Linn for that lane only (default 808). Mix kits across lanes. Analog models, not a sample ROM.
+Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that voice. The kit menu under the name picks 707 / 808 / 909 / Linn / Sample for that lane only (default 808). Mix kits across lanes. Drop a wav, aiff, flac, or ogg on a lane to load it and switch that lane to Sample. The file is summed to mono, trimmed to 4 seconds, and saved in the patch.
 
 - Click a cell: off → on (cyan) → accent (magenta). On and accent also preview the lane.
 - Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length.
 - **Tune** ±12 st, **Swing** 50–75%, and **FX** 0–100% per lane (how much of that lane goes into the effects chain).
-- **Edit** on a lane opens that sound. The lane names, kit menus and Edit buttons stay put on the left; Edit on another lane switches sound, Edit on the same lane goes back to the grid. Tune / Decay / Click / Drive / HPF / Tone / Level offset the kit spec (50% is the stock sound). A magenta line on the waveform follows the hit while it plays. The mixer strip for that lane sits on the right.
+- **Edit** on a lane opens that sound. The lane names, kit menus and Edit buttons stay put on the left; Edit on another lane switches sound, Edit on the same lane goes back to the grid. Synth kits: Tune / Decay / Click / Drive / HPF / Tone / Level offset the kit spec (50% is the stock sound). Sample: Tune / Start / End / Level / Reverse, and **Load** (or drop a file on the waveform). A magenta line on the waveform follows the hit while it plays. The mixer strip for that lane sits on the right.
 - **Bank** / **Pat** — 3 banks × 12 patterns.
 - **1 / 2 / 4 bar** — 16 / 32 / 64 sixteenths. Extra bars tile the current length. Use the step pager when longer than one bar.
 - **Random** / **Clear** — fill or wipe every step of the current pattern. Loops, length, and knobs stay.

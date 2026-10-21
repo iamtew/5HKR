@@ -1,7 +1,7 @@
 # 5HKR – Cursor Rules
 
 Percussion groove box: 8 synth lanes, step sequencer, pattern banks, sidechain duck.
-Not a sample player.
+A lane can play one loaded one-shot instead of its synth. Not a sample library.
 
 ## Stack
 - JUCE (Projucer workflow only – no CMake)
@@ -26,5 +26,5 @@ justfile
 ## Do NOT
 - Introduce CMake
 - Allocate on the audio thread
-- Add sample playback
+- Add a sample library, streaming, or multi-sample instruments
 - Copy commercial plugin code

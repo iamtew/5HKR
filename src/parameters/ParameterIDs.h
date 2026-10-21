@@ -66,6 +66,18 @@ inline constexpr const char* laneDrive[hkr::numLanes] = {
     "laneDrive0", "laneDrive1", "laneDrive2", "laneDrive3",
     "laneDrive4", "laneDrive5", "laneDrive6", "laneDrive7"
 };
+inline constexpr const char* laneSampStart[hkr::numLanes] = {
+    "laneSampStart0", "laneSampStart1", "laneSampStart2", "laneSampStart3",
+    "laneSampStart4", "laneSampStart5", "laneSampStart6", "laneSampStart7"
+};
+inline constexpr const char* laneSampEnd[hkr::numLanes] = {
+    "laneSampEnd0", "laneSampEnd1", "laneSampEnd2", "laneSampEnd3",
+    "laneSampEnd4", "laneSampEnd5", "laneSampEnd6", "laneSampEnd7"
+};
+inline constexpr const char* laneSampRev[hkr::numLanes] = {
+    "laneSampRev0", "laneSampRev1", "laneSampRev2", "laneSampRev3",
+    "laneSampRev4", "laneSampRev5", "laneSampRev6", "laneSampRev7"
+};
 inline constexpr const char* laneMixGain[hkr::numLanes] = {
     "laneMixGain0", "laneMixGain1", "laneMixGain2", "laneMixGain3",
     "laneMixGain4", "laneMixGain5", "laneMixGain6", "laneMixGain7"

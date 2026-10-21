@@ -2,7 +2,7 @@
 
 ## Vision
 
-A perc groove box: eight tiny analog-ish synth lanes on a 16th grid, with banks you can key-lock like TEW03. Not a sample player.
+A perc groove box: eight tiny analog-ish synth lanes on a 16th grid, with banks you can key-lock like TEW03. A lane can play one loaded one-shot instead of its synth.
 
 ## MVP
 
@@ -11,6 +11,7 @@ A perc groove box: eight tiny analog-ish synth lanes on a 16th grid, with banks 
 - Per-step off / on / accent
 - 3 banks × 12 patterns, hold C1 (Ableton C0) for bank 1 pattern 1
 - Per-lane Tune and mute
+- Per-lane one-shot sample (last kit choice), stored in the patch
 - Sidechain duck from the audio input
 - Patch + bank library (`.5hkrp` / `.5hkrb`)
 - Editor pages: Main, Mixer, Effects, EQ, Sidechain
@@ -22,6 +23,6 @@ A perc groove box: eight tiny analog-ish synth lanes on a 16th grid, with banks 
 
 ## Non-goals
 
-- Sample playback
+- Sample library, streaming, multi-sample instruments
 - MIDI out of the sequence
 - Comp / dist / filter / insert-EQ inside the FX rack

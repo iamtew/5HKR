@@ -1,6 +1,6 @@
 # DSP notes
 
-- Per-lane kit (`laneKit0..7`): 707 / 808 (default) / 909 / Linn. Coefficient tables in `Voices`. Mix kits. Analog models, no sample ROM.
+- Per-lane kit (`laneKit0..7`): 707 / 808 (default) / 909 / Linn / Sample. Synth kits are coefficient tables in `Voices`. Sample plays one mono one-shot (start, end, tune, level, reverse), linear resample, 1 ms edge fades, no synth filter. Audio thread only reads the published buffer. Cap 4 seconds. Stored in the patch, not the bank.
 - One chain per lane: **0–6 oscillators** (squares free-run, sines reset per hit; optional pitch drop for knock) blended with **noise** (`noiseMix`) → **resonant TPT state-variable filter** (BP at unity peak, or HP; Hz + Q) → one-pole **tone LP** → 4 ms **click** burst → **snap + tail envelope** → gain → **tanh** (kit `sat` + Drive, normalised so peaks stay put) → optional **bit-round** after the envelope (gates tails like low-bit PCM).
 - Spec times are ms to -60 dB, frequencies are Hz, so hits sound the same at any sample rate. Coefficients rebuild once per block when a knob, kit or tune changes; the per-sample path has no pow / exp / tan.
 - Knobs at 0.5 = kit spec. Decay ×0.35..×2.8 tail. HPF ±2 octaves on the SVF. LPF ±2 octaves on the tone LP. Click 0..2× snap and click burst. Drive adds to kit sat. Accent: louder, more snap, SVF +15%.
@@ -14,4 +14,4 @@
 - Master meter is max(|L|, |R|) after FX, post EQ and duck, same hold and scale. Clip is a sample at 0 dBFS.
 - Lane FX send: dry = lane * (1 - send), send bus = lane * send. One global chain (JUCE Chorus / DelayLine+LP / Chorus-as-flanger / Phaser / Reverb). Order is packed `FX_ORDER` on APVTS state.
 - Post EQ: 5 biquads (off/peak/shelves/HP/LP), same math as K1X. Spectrum FFT hop 2048 after the EQ. Same analyser type on the sidechain key.
-- Not a sample ROM. If a hit sits off on a real interface, Tune is the calibration knob.
+- Not a sample library. If a hit sits off on a real interface, Tune is the calibration knob.

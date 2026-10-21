@@ -9,7 +9,8 @@
 namespace hkr
 {
 
-// Analog-ish hits. Kits are coefficient tables, not four engines. No sample ROM.
+// Analog-ish hits. Kits 707/808/909/Linn are coefficient tables, not four engines.
+// kitSample plays a caller-owned mono buffer (one-shot). That pointer is only read.
 //
 // Per lane, per sample:
 //   osc stack (+ pitch drop) and/or noise  ->  resonant SVF (BP or HP)
@@ -29,8 +30,42 @@ struct Voices
         rng = 0xA5A5u;
         for (auto& s : st)
             s = State {};
+        for (int i = 0; i < numLanes; ++i)
+        {
+            sampStart[i] = 0.f;
+            sampEnd[i] = 1.f;
+            sampRev[i] = false;
+            sp[i] = SampPlay {};
+            view[i] = SampleView {};
+        }
         clickMul = decayMul (4.f);
         dirty = true;
+    }
+
+    // Pointers stay valid until the owner publishes a different buffer.
+    struct SampleView
+    {
+        const float* data = nullptr;
+        int frames = 0;
+        double fileRate = 44100.0;
+    };
+
+    void setSamples (const SampleView v[numLanes])
+    {
+        for (int i = 0; i < numLanes; ++i)
+            view[i] = v[i];
+    }
+
+    // Start/end are fractions of the file. Latched on the next trigger.
+    void setSampleRegion (const float start[numLanes], const float end[numLanes],
+                          const bool rev[numLanes])
+    {
+        for (int i = 0; i < numLanes; ++i)
+        {
+            sampStart[i] = std::clamp (start[i], 0.f, 1.f);
+            sampEnd[i] = std::clamp (end[i], 0.f, 1.f);
+            sampRev[i] = rev[i];
+        }
     }
 
     void trigger (int lane, bool accent)
@@ -38,16 +73,22 @@ struct Voices
         if (lane < 0 || lane >= numLanes)
             return;
         auto& s = st[lane];
+        s.age = 0;
+        if (kit[lane] == kitSample)
+        {
+            triggerSample (lane, accent);
+            return;
+        }
+        sp[lane].on = false;
         s.level = accent ? 1.f : 0.65f;
         s.accent = accent;
         s.tail = 1.f;
         s.snap = accent ? 1.3f : 1.f;
         s.click = 1.f;
         s.pitch = 1.f;
-        s.age = 0;
         // Squares are free-running like the 808 metal oscillators (each hit
         // lands on a different phase). Sines are struck resonators: reset.
-        if (! kSpec[kit[lane]][lane].square)
+        if (kit[lane] >= 0 && kit[lane] < numSynthKits && ! kSpec[kit[lane]][lane].square)
             for (auto& p : s.ph)
                 p = 0.f;
     }
@@ -172,6 +213,8 @@ private:
 
     void refresh (int i)
     {
+        if (kit[i] == kitSample || kit[i] < 0 || kit[i] >= numSynthKits)
+            return;
         const Spec& s = kSpec[kit[i]][i];
         auto& c = co[i];
         const float fs = (float) sr;
@@ -218,8 +261,94 @@ private:
         c.gain = around (s.gain, editGain[i]);
     }
 
+    void triggerSample (int lane, bool accent)
+    {
+        auto& s = st[lane];
+        auto& p = sp[lane];
+        const auto& v = view[lane];
+        p.on = false;
+        s.tail = 0.f;
+        s.snap = 0.f;
+        s.env = 0.f;
+        if (v.data == nullptr || v.frames < 1)
+            return;
+        float a = sampStart[lane];
+        float b = sampEnd[lane];
+        if (b < a)
+            std::swap (a, b);
+        const int frames = v.frames;
+        int i0 = std::clamp ((int) (a * (float) frames), 0, frames - 1);
+        int i1 = std::clamp ((int) (b * (float) frames), 0, frames);
+        if (i1 <= i0)
+            i1 = std::min (frames, i0 + 1);
+        p.start = i0;
+        p.end = i1;
+        p.rev = sampRev[lane];
+        p.pos = p.rev ? (float) (i1 - 1) : (float) i0;
+        const double fileSr = v.fileRate > 1.0 ? v.fileRate : sr;
+        const float ratio = (float) (fileSr / sr) * std::pow (2.f, tune[lane] / 12.f);
+        p.inc = (p.rev ? -1.f : 1.f) * std::max (ratio, 1.0e-4f);
+        p.level = accent ? 1.f : 0.65f;
+        p.on = p.end > p.start;
+        s.env = p.on ? p.level : 0.f;
+    }
+
+    float renderSample (int lane)
+    {
+        auto& s = st[lane];
+        auto& p = sp[lane];
+        if (! p.on)
+        {
+            s.env = 0.f;
+            return 0.f;
+        }
+        const auto& v = view[lane];
+        if (v.data == nullptr || v.frames <= 0 || p.end <= p.start)
+        {
+            p.on = false;
+            s.env = 0.f;
+            return 0.f;
+        }
+        const bool forward = p.inc >= 0.f;
+        const float pos = p.pos;
+        if (forward ? (pos >= (float) p.end) : (pos < (float) p.start))
+        {
+            p.on = false;
+            s.env = 0.f;
+            return 0.f;
+        }
+        ++s.age;
+        const int frames = v.frames;
+        const int last = std::max (p.start, std::min (p.end, frames) - 1);
+        const int i = std::clamp ((int) std::floor (pos), p.start, last);
+        const float frac = pos - std::floor (pos);
+        const int j = std::clamp (i + 1, p.start, last);
+        float y = v.data[i] + frac * (v.data[j] - v.data[i]);
+
+        const float span = std::max (1.0e-4f, std::abs (p.inc));
+        const float fromStart = forward ? (pos - (float) p.start) / span
+                                         : ((float) last - pos) / span;
+        const float fromEnd = forward ? ((float) p.end - pos) / span
+                                       : (pos - (float) p.start) / span;
+        const float fadeN = 0.001f * (float) sr;
+        float fade = 1.f;
+        if (fadeN > 0.f && fromStart < fadeN)
+            fade *= std::max (0.f, fromStart) / fadeN;
+        if (fadeN > 0.f && fromEnd < fadeN)
+            fade *= std::max (0.f, fromEnd) / fadeN;
+
+        y *= p.level * around (1.f, editGain[lane]) * fade;
+        p.pos += p.inc;
+        if (forward ? (p.pos >= (float) p.end) : (p.pos < (float) p.start))
+            p.on = false;
+        s.env = p.on ? std::max (0.01f, std::min (1.f, std::abs (p.level * fade))) : 0.f;
+        return y;
+    }
+
     float render (int lane)
     {
+        if (kit[lane] == kitSample)
+            return renderSample (lane);
         auto& s = st[lane];
         const auto& c = co[lane];
         // Silent lane: skip the work. -80 dB is below anything audible here.
@@ -281,7 +410,24 @@ private:
     // (CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim).
     // Columns: tailMs snapMs snapAmt | fHz q mode | lpHz | noise | dropSemi dropMs |
     //          sat gain click bits | nOsc square hz[]
-    static constexpr Spec kSpec[numKits][numLanes] = {
+    struct SampPlay
+    {
+        float pos = 0.f;
+        float inc = 1.f;
+        float level = 0.f;
+        int start = 0;
+        int end = 0;
+        bool rev = false;
+        bool on = false;
+    };
+
+    SampleView view[numLanes] {};
+    SampPlay sp[numLanes] {};
+    float sampStart[numLanes] {};
+    float sampEnd[numLanes] {};
+    bool sampRev[numLanes] {};
+
+    static constexpr Spec kSpec[numSynthKits][numLanes] = {
         // 707 — tight, 8-bit PCM edge, a little dark, almost no saturation
         {
             { 35.f, 3.f, 0.5f,    6500.f, 0.9f, HP, 11000.f, 0.6f, 0.f, 0.f,  0.05f, 1.25f, 0.10f, 128.f, 6, true, { 245.f, 353.f, 467.f, 555.f, 722.f, 980.f } },
