@@ -7,7 +7,8 @@ PROJUCER  := JUCE_PATH + "\\Projucer.exe"
 PROJECT   := "5HKR.jucer"
 SOLUTION  := "Builds\\VisualStudio2022\\5HKR.sln"
 # Bare `msbuild` is not on PATH with Build Tools alone.
-MSBUILD   := "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe"
+# CI sets MSBUILD to the runner's Visual Studio; this default stays the local Build Tools.
+MSBUILD   := env_var_or_default("MSBUILD", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe")
 
 default:
     @just --list
@@ -43,7 +44,7 @@ build-dist: build-release
 # `dotnet` on PATH when it has an SDK, otherwise %USERPROFILE%\.dotnet.
 # msiexec 1620 on OneDrive/reparse (C:\Users\Mikael\src is a junction). AppData copy is the first-time install; dist is for shipping. Sister MSIs look fine because they are already in the Windows Installer cache.
 build-msi:
-    $ver = ([xml](Get-Content '{{PROJECT}}')).JUCERPROJECT.version; $root = (Get-Location).Path; $dotnet = 'dotnet'; if (-not ((& dotnet --list-sdks) 2>$null)) { $dotnet = Join-Path $env:USERPROFILE '.dotnet\dotnet.exe'; if (-not (Test-Path $dotnet)) { throw 'build-msi needs the .NET 8 SDK on PATH, or dotnet.exe in %USERPROFILE%\.dotnet' } }; New-Item -ItemType Directory -Force -Path dist | Out-Null; & $dotnet build installer\5HKR.wixproj -c Release -p:ProductVersion=$ver -p:Vst3Dir="$root\Builds\VisualStudio2022\x64\Release\VST3\5HKR.vst3" -p:StandaloneDir="$root\Builds\VisualStudio2022\x64\Release\Standalone Plugin" -p:IconDir="$root\Builds\VisualStudio2022"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $msi = Get-ChildItem installer\bin -Recurse -Filter 5HKR.msi | Select-Object -First 1; $dest = "dist\5HKR-$ver-win-x64.msi"; Copy-Item $msi.FullName $dest -Force; $localDir = Join-Path $env:LOCALAPPDATA '5HKR'; New-Item -ItemType Directory -Force -Path $localDir | Out-Null; $run = Join-Path $localDir "5HKR-$ver-win-x64.msi"; Copy-Item $msi.FullName $run -Force; Write-Host "RUN $run"; Start-Process explorer.exe "/select,$run"
+    $ver = ([xml](Get-Content '{{PROJECT}}')).JUCERPROJECT.version; $root = (Get-Location).Path; $dotnet = 'dotnet'; if (-not ((& dotnet --list-sdks) 2>$null)) { $dotnet = Join-Path $env:USERPROFILE '.dotnet\dotnet.exe'; if (-not (Test-Path $dotnet)) { throw 'build-msi needs the .NET 8 SDK on PATH, or dotnet.exe in %USERPROFILE%\.dotnet' } }; New-Item -ItemType Directory -Force -Path dist | Out-Null; & $dotnet build installer\5HKR.wixproj -c Release -p:ProductVersion=$ver -p:Vst3Dir="$root\Builds\VisualStudio2022\x64\Release\VST3\5HKR.vst3" -p:StandaloneDir="$root\Builds\VisualStudio2022\x64\Release\Standalone Plugin" -p:IconDir="$root\Builds\VisualStudio2022"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $msi = Get-ChildItem installer\bin -Recurse -Filter 5HKR.msi | Select-Object -First 1; $dest = "dist\5HKR-$ver-win-x64.msi"; Copy-Item $msi.FullName $dest -Force; $localDir = Join-Path $env:LOCALAPPDATA '5HKR'; New-Item -ItemType Directory -Force -Path $localDir | Out-Null; $run = Join-Path $localDir "5HKR-$ver-win-x64.msi"; Copy-Item $msi.FullName $run -Force; Write-Host "RUN $run"; if (-not $env:GITHUB_ACTIONS) { Start-Process explorer.exe "/select,$run" }
 
 clean:
     & '{{MSBUILD}}' {{SOLUTION}} /t:Clean /p:Configuration=Debug /p:Platform=x64
