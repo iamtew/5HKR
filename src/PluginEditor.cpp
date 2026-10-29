@@ -89,6 +89,10 @@ HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln
     onAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         ed.proc.apvts, ParamID::laneOn[ln], onBtn);
     addAndMakeVisible (onBtn);
+    previewBtn.setColour (juce::TextButton::buttonColourId, kCyan);
+    previewBtn.setColour (juce::TextButton::textColourOffId, kDark);
+    previewBtn.onClick = [this] { editor.proc.audition (lane, false); };
+    addChildComponent (previewBtn);
     for (int i = 0; i < hkr::numKits; ++i)
         kitBox.addItem (hkr::kitNames[i], i + 1);
     kitAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
@@ -142,7 +146,14 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
 {
     auto r = getLocalBounds();
     auto drum = r.removeFromLeft (64).reduced (1);
-    onBtn.setBounds (drum.removeFromTop (drum.getHeight() / 2));
+    const auto nameR = drum.removeFromTop (drum.getHeight() / 2);
+    const bool preview = compact && editor.editLane == lane;
+    onBtn.setVisible (! preview);
+    previewBtn.setVisible (preview);
+    onBtn.setBounds (nameR);
+    previewBtn.setBounds (nameR);
+    if (preview)
+        previewBtn.toFront (false);
     kitBox.setBounds (drum);
     editBtn.setBounds (r.removeFromLeft (44).reduced (2, 6));
     for (juce::Component* c : { (juce::Component*) &tune, (juce::Component*) &tuneLabel,
@@ -697,8 +708,18 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
     wave.editor = this;
     content.addChildComponent (editStrip);
     content.addChildComponent (editLoad);
+    content.addChildComponent (editUnload);
     content.addChildComponent (editReverse);
     editLoad.onClick = [this] { chooseLaneSample(); };
+    editUnload.onClick = [this]
+    {
+        if (editLane < 0)
+            return;
+        proc.unloadLaneSample (editLane);
+        waveDirty = true;
+        bindEditLane();
+        layoutContent();
+    };
     static constexpr const char* kEditNames[] = {
         "Tune", "Decay", "Click", "Drive", "HPF", "Tone", "Level"
     };
@@ -846,16 +867,18 @@ void HKR5AudioProcessorEditor::layoutContent()
         if (editIsSample)
         {
             editLoad.setBounds (knobRow.removeFromLeft (76).reduced (4, 36));
+            if (proc.laneHasSample (editLane))
+                editUnload.setBounds (knobRow.removeFromLeft (76).reduced (4, 36));
             editReverse.setBounds (knobRow.removeFromLeft (88).reduced (4, 36));
         }
         int shown = 0;
         for (int i = 0; i < editKnobs.size(); ++i)
-            if (! editIsSample || i == 0 || i == 1 || i == 2 || i == 6)
+            if (! editIsSample || i != 5)
                 ++shown;
         const int cellW = juce::jmax (1, knobRow.getWidth() / juce::jmax (1, shown));
         for (int i = 0; i < editKnobs.size(); ++i)
         {
-            const bool show = ! editIsSample || i == 0 || i == 1 || i == 2 || i == 6;
+            const bool show = ! editIsSample || i != 5;
             if (show)
                 editKnobs[i]->setBounds (knobRow.removeFromLeft (cellW));
         }
@@ -992,10 +1015,11 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     editStrip.setVisible (editing);
     const bool sampleEdit = editing && editIsSample;
     editLoad.setVisible (sampleEdit);
+    editUnload.setVisible (sampleEdit && proc.laneHasSample (editLane));
     editReverse.setVisible (sampleEdit);
     for (int i = 0; i < editKnobs.size(); ++i)
     {
-        const bool show = editing && (! sampleEdit || i == 0 || i == 1 || i == 2 || i == 6);
+        const bool show = editing && (! sampleEdit || i != 5);
         editKnobs[i]->setVisible (show);
     }
     scOn.setVisible (sc);
@@ -1033,6 +1057,8 @@ void HKR5AudioProcessorEditor::listenLaneParams (bool on)
     one (ParamID::laneSampStart);
     one (ParamID::laneSampEnd);
     one (ParamID::laneSampRev);
+    one (ParamID::laneSampAtk);
+    one (ParamID::laneSampRel);
 }
 
 void HKR5AudioProcessorEditor::parameterChanged (const juce::String&, float)
@@ -1075,7 +1101,7 @@ void HKR5AudioProcessorEditor::bindEditLane()
         "Tune", "Decay", "Click", "Drive", "HPF", "Tone", "Level"
     };
     static constexpr const char* kSampleNames[] = {
-        "Tune", "Start", "End", "", "", "", "Level"
+        "Tune", "Start", "End", "Attack", "Release", "", "Level"
     };
     const char* synthIds[] = {
         ParamID::laneTune[ln], ParamID::laneDecay[ln], ParamID::laneClick[ln],
@@ -1084,7 +1110,7 @@ void HKR5AudioProcessorEditor::bindEditLane()
     };
     const char* sampleIds[] = {
         ParamID::laneTune[ln], ParamID::laneSampStart[ln], ParamID::laneSampEnd[ln],
-        nullptr, nullptr, nullptr, ParamID::laneGain[ln]
+        ParamID::laneSampAtk[ln], ParamID::laneSampRel[ln], nullptr, ParamID::laneGain[ln]
     };
     bindingEdit = true;
     for (int i = 0; i < editKnobs.size() && i < 7; ++i)
@@ -1126,6 +1152,9 @@ void HKR5AudioProcessorEditor::rebuildWave()
         --last;
     last = juce::jmax (64, last);
     wave.durSec = (float) last / 44100.f;
+    wave.atk01 = -1.f;
+    wave.rel01 = -1.f;
+    wave.rev = false;
 
     float peak = 0.f;
     for (int i = 0; i <= last; ++i)
@@ -1177,6 +1206,9 @@ void HKR5AudioProcessorEditor::rebuildSampleWave()
         wave.peakDb = -100.f;
         wave.title = juce::String (hkr::laneNames[editLane]) + "  Sample";
         wave.info = "Drop or Load";
+        wave.atk01 = -1.f;
+        wave.rel01 = -1.f;
+        wave.rev = false;
         wave.repaint();
         return;
     }
@@ -1209,6 +1241,9 @@ void HKR5AudioProcessorEditor::rebuildSampleWave()
     const auto name = proc.laneSampleName (editLane);
     wave.title = juce::String (hkr::laneNames[editLane]) + "  Sample";
     wave.info = name.isEmpty() ? juce::String ("Sample") : name;
+    wave.atk01 = proc.apvts.getRawParameterValue (ParamID::laneSampAtk[editLane])->load();
+    wave.rel01 = proc.apvts.getRawParameterValue (ParamID::laneSampRel[editLane])->load();
+    wave.rev = proc.apvts.getRawParameterValue (ParamID::laneSampRev[editLane])->load() >= 0.5f;
     wave.repaint();
 }
 
@@ -1346,6 +1381,59 @@ void HKR5AudioProcessorEditor::WaveView::paint (juce::Graphics& g)
         g.fillPath (shape);
         g.setColour (kCyan);
         g.strokePath (shape, juce::PathStrokeType (1.f));
+
+        if (atk01 >= 0.f && rel01 >= 0.f)
+        {
+            float atk = std::clamp (atk01, 0.f, 1.f);
+            float rel = std::clamp (rel01, 0.f, 1.f);
+            const float sum = atk + rel;
+            if (sum > 1.f)
+            {
+                atk /= sum;
+                rel /= sum;
+            }
+            auto envAt = [&] (float t)
+            {
+                const float p = rev ? 1.f - t : t;
+                if (atk > 0.f && p < atk)
+                    return p / atk;
+                if (rel > 0.f && p > 1.f - rel)
+                    return (1.f - p) / rel;
+                return 1.f;
+            };
+            auto veil = [&] (float t0, float t1, bool darkAtStart)
+            {
+                if (t1 - t0 < 0.001f)
+                    return;
+                const float x0 = r.getX() + t0 * r.getWidth();
+                const float x1 = r.getX() + t1 * r.getWidth();
+                juce::ColourGradient grad (
+                    juce::Colours::black.withAlpha (darkAtStart ? 0.55f : 0.f), x0, mid,
+                    juce::Colours::black.withAlpha (darkAtStart ? 0.f : 0.55f), x1, mid, false);
+                g.setGradientFill (grad);
+                g.fillRect (juce::Rectangle<float> (x0, r.getY(), x1 - x0, r.getHeight()));
+            };
+            if (rev)
+            {
+                veil (1.f - atk, 1.f, false);
+                veil (0.f, rel, true);
+            }
+            else
+            {
+                veil (0.f, atk, true);
+                veil (1.f - rel, 1.f, false);
+            }
+            juce::Path env;
+            env.startNewSubPath (xAt (0), mid - hi[0] * amp * envAt (0.f));
+            for (int i = 1; i < n; ++i)
+            {
+                const float t = (float) i / (float) (n - 1);
+                env.lineTo (xAt (i), mid - hi[(size_t) i] * amp * envAt (t));
+            }
+            g.setColour (kWhite.withAlpha (0.5f));
+            g.strokePath (env, juce::PathStrokeType (1.5f));
+        }
+
         if (play01 >= 0.f && play01 <= 1.f)
         {
             // Tint what has already sounded.

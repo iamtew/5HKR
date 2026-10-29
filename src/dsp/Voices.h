@@ -34,6 +34,8 @@ struct Voices
         {
             sampStart[i] = 0.f;
             sampEnd[i] = 1.f;
+            sampAtk[i] = 0.f;
+            sampRel[i] = 0.f;
             sampRev[i] = false;
             sp[i] = SampPlay {};
             view[i] = SampleView {};
@@ -56,15 +58,18 @@ struct Voices
             view[i] = v[i];
     }
 
-    // Start/end are fractions of the file. Latched on the next trigger.
+    // Start/end/atk/rel are fractions of the file / played region. Latched on the next trigger.
     void setSampleRegion (const float start[numLanes], const float end[numLanes],
-                          const bool rev[numLanes])
+                          const bool rev[numLanes],
+                          const float atk[numLanes], const float rel[numLanes])
     {
         for (int i = 0; i < numLanes; ++i)
         {
             sampStart[i] = std::clamp (start[i], 0.f, 1.f);
             sampEnd[i] = std::clamp (end[i], 0.f, 1.f);
             sampRev[i] = rev[i];
+            sampAtk[i] = std::clamp (atk[i], 0.f, 1.f);
+            sampRel[i] = std::clamp (rel[i], 0.f, 1.f);
         }
     }
 
@@ -289,6 +294,16 @@ private:
         const float ratio = (float) (fileSr / sr) * std::pow (2.f, tune[lane] / 12.f);
         p.inc = (p.rev ? -1.f : 1.f) * std::max (ratio, 1.0e-4f);
         p.level = accent ? 1.f : 0.65f;
+        float atk = sampAtk[lane];
+        float rel = sampRel[lane];
+        const float sum = atk + rel;
+        if (sum > 1.f)
+        {
+            atk /= sum;
+            rel /= sum;
+        }
+        p.atk = atk;
+        p.rel = rel;
         p.on = p.end > p.start;
         s.env = p.on ? p.level : 0.f;
     }
@@ -330,12 +345,15 @@ private:
                                          : ((float) last - pos) / span;
         const float fromEnd = forward ? ((float) p.end - pos) / span
                                        : (pos - (float) p.start) / span;
-        const float fadeN = 0.001f * (float) sr;
+        const float regionN = std::max (1.f, (float) (p.end - p.start) / span);
+        const float floorN = 0.001f * (float) sr;
+        const float atkN = std::max (floorN, p.atk * regionN);
+        const float relN = std::max (floorN, p.rel * regionN);
         float fade = 1.f;
-        if (fadeN > 0.f && fromStart < fadeN)
-            fade *= std::max (0.f, fromStart) / fadeN;
-        if (fadeN > 0.f && fromEnd < fadeN)
-            fade *= std::max (0.f, fromEnd) / fadeN;
+        if (fromStart < atkN)
+            fade *= std::max (0.f, fromStart) / atkN;
+        if (fromEnd < relN)
+            fade *= std::max (0.f, fromEnd) / relN;
 
         y *= p.level * around (1.f, editGain[lane]) * fade;
         p.pos += p.inc;
@@ -415,6 +433,8 @@ private:
         float pos = 0.f;
         float inc = 1.f;
         float level = 0.f;
+        float atk = 0.f;
+        float rel = 0.f;
         int start = 0;
         int end = 0;
         bool rev = false;
@@ -425,6 +445,8 @@ private:
     SampPlay sp[numLanes] {};
     float sampStart[numLanes] {};
     float sampEnd[numLanes] {};
+    float sampAtk[numLanes] {};
+    float sampRel[numLanes] {};
     bool sampRev[numLanes] {};
 
     static constexpr Spec kSpec[numSynthKits][numLanes] = {

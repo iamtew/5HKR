@@ -78,6 +78,14 @@ inline constexpr const char* laneSampRev[hkr::numLanes] = {
     "laneSampRev0", "laneSampRev1", "laneSampRev2", "laneSampRev3",
     "laneSampRev4", "laneSampRev5", "laneSampRev6", "laneSampRev7"
 };
+inline constexpr const char* laneSampAtk[hkr::numLanes] = {
+    "laneSampAtk0", "laneSampAtk1", "laneSampAtk2", "laneSampAtk3",
+    "laneSampAtk4", "laneSampAtk5", "laneSampAtk6", "laneSampAtk7"
+};
+inline constexpr const char* laneSampRel[hkr::numLanes] = {
+    "laneSampRel0", "laneSampRel1", "laneSampRel2", "laneSampRel3",
+    "laneSampRel4", "laneSampRel5", "laneSampRel6", "laneSampRel7"
+};
 inline constexpr const char* laneMixGain[hkr::numLanes] = {
     "laneMixGain0", "laneMixGain1", "laneMixGain2", "laneMixGain3",
     "laneMixGain4", "laneMixGain5", "laneMixGain6", "laneMixGain7"
@@ -121,31 +129,31 @@ inline constexpr const char* fxOnIds[fxCount] = {
 
 inline constexpr const char* fxChoRate = "fxChoRate";
 inline constexpr const char* fxChoDepth = "fxChoDepth";
-inline constexpr const char* fxChoMix = "fxChoMix";
+inline constexpr const char* fxChoWidth = "fxChoWidth";
 inline constexpr const char* fxChoFb = "fxChoFb";
 
 inline constexpr const char* fxDlyTime = "fxDlyTime";
 inline constexpr const char* fxDlyFb = "fxDlyFb";
-inline constexpr const char* fxDlyMix = "fxDlyMix";
 inline constexpr const char* fxDlyCut = "fxDlyCut";
 inline constexpr const char* fxDlySync = "fxDlySync";
 inline constexpr const char* fxDlyDiv = "fxDlyDiv";
+inline constexpr const char* fxDlyPing = "fxDlyPing";
 
 inline constexpr const char* fxFlaRate = "fxFlaRate";
 inline constexpr const char* fxFlaDepth = "fxFlaDepth";
 inline constexpr const char* fxFlaFb = "fxFlaFb";
-inline constexpr const char* fxFlaMix = "fxFlaMix";
+inline constexpr const char* fxFlaDelay = "fxFlaDelay";
 
 inline constexpr const char* fxPhaRate = "fxPhaRate";
 inline constexpr const char* fxPhaDepth = "fxPhaDepth";
 inline constexpr const char* fxPhaFb = "fxPhaFb";
-inline constexpr const char* fxPhaMix = "fxPhaMix";
 inline constexpr const char* fxPhaCentre = "fxPhaCentre";
+inline constexpr const char* fxPhaSpread = "fxPhaSpread";
 
 inline constexpr const char* fxRevSize = "fxRevSize";
 inline constexpr const char* fxRevDamp = "fxRevDamp";
-inline constexpr const char* fxRevMix = "fxRevMix";
 inline constexpr const char* fxRevWidth = "fxRevWidth";
+inline constexpr const char* fxRevPre = "fxRevPre";
 
 inline constexpr int eqBandCount = 5;
 inline constexpr const char* postEqOn = "postEqOn";
@@ -269,6 +277,32 @@ inline void formatFxOrder (std::uint64_t packed, char* buf, int bufSize)
         buf[w++] = (char) ('0' + types[i]);
     }
     buf[w] = 0;
+}
+
+// ping: L eats R tap (and vice versa). Mono callers pass the same channel twice.
+inline void delayPingPush (bool ping, float inL, float inR, float dL, float dR, float fb,
+                           float& pushL, float& pushR)
+{
+    if (ping)
+    {
+        pushL = inL + dR * fb;
+        pushR = inR + dL * fb;
+    }
+    else
+    {
+        pushL = inL + dL * fb;
+        pushR = inR + dR * fb;
+    }
+}
+
+inline float fxPreDelaySamples (float ms, float sr, float maxSamp)
+{
+    float s = ms * 0.001f * sr;
+    if (s < 0.f)
+        s = 0.f;
+    if (s > maxSamp)
+        s = maxSamp;
+    return s;
 }
 
 } // namespace hkr

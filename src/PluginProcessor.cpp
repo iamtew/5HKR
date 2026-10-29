@@ -210,6 +210,8 @@ void HKR5AudioProcessor::applyVoiceParams (hkr::Voices& v) const
     float drive[hkr::numLanes];
     float start[hkr::numLanes];
     float end[hkr::numLanes];
+    float atk[hkr::numLanes];
+    float rel[hkr::numLanes];
     bool rev[hkr::numLanes];
     int kits[hkr::numLanes];
     for (int i = 0; i < hkr::numLanes; ++i)
@@ -223,13 +225,15 @@ void HKR5AudioProcessor::applyVoiceParams (hkr::Voices& v) const
         drive[i] = raw (ParamID::laneDrive[i]);
         start[i] = raw (ParamID::laneSampStart[i]);
         end[i] = raw (ParamID::laneSampEnd[i]);
+        atk[i] = raw (ParamID::laneSampAtk[i]);
+        rel[i] = raw (ParamID::laneSampRel[i]);
         rev[i] = raw (ParamID::laneSampRev[i]) >= 0.5f;
         kits[i] = (int) raw (ParamID::laneKit[i]);
     }
     v.setTune (tune);
     v.setKit (kits);
     v.setEdit (decay, click, hp, lp, gain, drive);
-    v.setSampleRegion (start, end, rev);
+    v.setSampleRegion (start, end, rev, atk, rel);
     pushSampleViews (v);
 }
 
@@ -822,6 +826,12 @@ void HKR5AudioProcessor::loadLaneSamplesFromState()
     for (int lane = 0; lane < hkr::numLanes; ++lane)
         if (! keep[lane])
             clearLaneSampleAudio (lane);
+}
+
+void HKR5AudioProcessor::unloadLaneSample (int lane)
+{
+    clearLaneSampleAudio (lane);
+    writeLaneSamplesToState();
 }
 
 void HKR5AudioProcessor::clearLaneSamples()

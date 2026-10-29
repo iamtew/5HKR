@@ -212,7 +212,7 @@ private:
                     add (ParamID::fxChoRate, "Rate");
                     add (ParamID::fxChoDepth, "Depth");
                     add (ParamID::fxChoFb, "Fb");
-                    add (ParamID::fxChoMix, "Mix");
+                    add (ParamID::fxChoWidth, "Width");
                     break;
                 case 1:
                     add (ParamID::fxDlySync, "Sync");
@@ -220,26 +220,26 @@ private:
                     add (ParamID::fxDlyTime, "Time");
                     add (ParamID::fxDlyFb, "Fb");
                     add (ParamID::fxDlyCut, "Cut");
-                    add (ParamID::fxDlyMix, "Mix");
+                    add (ParamID::fxDlyPing, "Ping");
                     break;
                 case 2:
                     add (ParamID::fxFlaRate, "Rate");
                     add (ParamID::fxFlaDepth, "Depth");
                     add (ParamID::fxFlaFb, "Fb");
-                    add (ParamID::fxFlaMix, "Mix");
+                    add (ParamID::fxFlaDelay, "Delay");
                     break;
                 case 3:
                     add (ParamID::fxPhaRate, "Rate");
                     add (ParamID::fxPhaDepth, "Depth");
                     add (ParamID::fxPhaFb, "Fb");
                     add (ParamID::fxPhaCentre, "Centre");
-                    add (ParamID::fxPhaMix, "Mix");
+                    add (ParamID::fxPhaSpread, "Spread");
                     break;
                 case 4:
                     add (ParamID::fxRevSize, "Size");
                     add (ParamID::fxRevDamp, "Damp");
                     add (ParamID::fxRevWidth, "Width");
-                    add (ParamID::fxRevMix, "Mix");
+                    add (ParamID::fxRevPre, "Pre");
                     break;
                 default:
                     break;

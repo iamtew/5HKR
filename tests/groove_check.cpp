@@ -357,6 +357,8 @@ int main()
         float drive[numLanes] {};
         float start[numLanes] {};
         float end[numLanes];
+        float atk[numLanes] {};
+        float rel[numLanes] {};
         bool rev[numLanes] {};
         for (int i = 0; i < numLanes; ++i)
         {
@@ -379,7 +381,7 @@ int main()
         views[chh] = { pcm, n, 44100.0 };
         start[chh] = 0.5f;
         v.setSamples (views);
-        v.setSampleRegion (start, end, rev);
+        v.setSampleRegion (start, end, rev, atk, rel);
         v.trigger (chh, true);
         float buf[n];
         for (int i = 0; i < n; ++i)
@@ -391,6 +393,28 @@ int main()
         }
         assert (buf[80] > 0.5f);
         assert (buf[600] == 0.f);
+
+        float flat[n];
+        for (int i = 0; i < n; ++i)
+            flat[i] = 0.8f;
+        views[chh] = { flat, n, 44100.0 };
+        start[chh] = 0.f;
+        atk[chh] = 0.5f;
+        v.setSamples (views);
+        v.setSampleRegion (start, end, rev, atk, rel);
+        v.trigger (chh, true);
+        v.process (lanes);
+        assert (std::abs (lanes[chh]) < 0.02f);
+        for (int i = 0; i < 80; ++i)
+            v.process (lanes);
+        assert (lanes[chh] > 0.02f && lanes[chh] < 0.4f);
+
+        atk[chh] = 0.f;
+        v.setSampleRegion (start, end, rev, atk, rel);
+        v.trigger (chh, true);
+        for (int i = 0; i < 50; ++i)
+            v.process (lanes);
+        assert (lanes[chh] > 0.5f);
     }
 
     {
@@ -401,6 +425,15 @@ int main()
         assert (out[0] == 4 && out[1] == 0 && out[2] == 2);
         assert (hkr::completeFxOrder (out, 3) == hkr::fxCount);
         assert (out[3] == 1 && out[4] == 3);
+
+        float pL = 0.f, pR = 0.f;
+        delayPingPush (false, 1.f, 2.f, 3.f, 4.f, 0.5f, pL, pR);
+        assert (pL == 1.f + 3.f * 0.5f && pR == 2.f + 4.f * 0.5f);
+        delayPingPush (true, 1.f, 2.f, 3.f, 4.f, 0.5f, pL, pR);
+        assert (pL == 1.f + 4.f * 0.5f && pR == 2.f + 3.f * 0.5f);
+        assert (fxPreDelaySamples (0.f, 44100.f, 4409.f) == 0.f);
+        assert (std::abs (fxPreDelaySamples (10.f, 44100.f, 4409.f) - 441.f) < 0.01f);
+        assert (fxPreDelaySamples (1000.f, 44100.f, 100.f) == 100.f);
 
         const auto peak = hkr::eqBiquad (hkr::eqTypePeak, 44100.f, 1000.f, 0.7f, 6.f);
         const float w = 2.f * 3.14159265f * 1000.f / 44100.f;

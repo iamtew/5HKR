@@ -17,7 +17,7 @@ Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. The lane name mutes that v
 - Click a cell: off → on (cyan) → accent (magenta). On and accent also preview the lane.
 - Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length.
 - **Tune** ±12 st, **Swing** 50–75%, and **FX** 0–100% per lane (how much of that lane goes into the effects chain).
-- **Edit** on a lane opens that sound. The lane names, kit menus and Edit buttons stay put on the left; Edit on another lane switches sound, Edit on the same lane goes back to the grid. Synth kits: Tune / Decay / Click / Drive / HPF / Tone / Level offset the kit spec (50% is the stock sound). Sample: Tune / Start / End / Level / Reverse, and **Load** (or drop a file on the waveform). A magenta line on the waveform follows the hit while it plays. The mixer strip for that lane sits on the right.
+- **Edit** on a lane opens that sound. The lane names, kit menus and Edit buttons stay put on the left; Edit on another lane switches sound, Edit on the same lane goes back to the grid. The edited lane name becomes **Play** (preview that sound; mute stays as it was). Synth kits: Tune / Decay / Click / Drive / HPF / Tone / Level offset the kit spec (50% is the stock sound). Sample: Tune / Start / End / Attack / Release / Level / Reverse, plus **Load** / **Unload** (or drop a file on the waveform). Attack and Release are fades over the cropped region; they draw as a faded overlay on the waveform. Unload drops the file; pick a synth kit to leave Sample. A magenta line on the waveform follows the hit while it plays. The mixer strip for that lane sits on the right.
 - **Bank** / **Pat** — 3 banks × 12 patterns.
 - **1 / 2 / 4 bar** — 16 / 32 / 64 sixteenths. Extra bars tile the current length. Use the step pager when longer than one bar.
 - **Random** / **Clear** — fill or wipe every step of the current pattern. Loops, length, and knobs stay.
@@ -55,7 +55,7 @@ Ducks the mixed lanes from the plugin audio input. **Sidechain** is off until yo
 
 ## Effects
 
-Click a name in the left rail to turn it on. Drag rails to reorder. Enabled effects show knobs: Chorus, Delay (sync or free), Flanger, Phaser, Reverb. Each has its own Mix. Lane **FX** must be up or the chain is silent.
+Click a name in the left rail to turn it on. Drag rails to reorder. Enabled effects are 100% wet; lane **FX** on Main is the only dry/wet. Chorus: Rate, Depth, Fb, Width. Delay: Sync, Div or Time, Fb, Cut, Ping. Flanger: Rate, Depth, Fb, Delay. Phaser: Rate, Depth, Fb, Centre, Spread. Reverb: Size, Damp, Width, Pre.
 
 ## EQ
 

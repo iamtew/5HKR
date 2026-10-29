@@ -127,6 +127,9 @@ private:
         float durSec = 1.f;
         float play01 = -1.f;
         float peakDb = -100.f;
+        float atk01 = -1.f; // <0: no fade overlay (synth edit)
+        float rel01 = -1.f;
+        bool rev = false;
         juce::String title, info;
     };
 
@@ -147,6 +150,7 @@ private:
         HKR5AudioProcessorEditor& editor;
         int lane = 0;
         juce::ToggleButton onBtn;
+        juce::TextButton previewBtn { "Play" };
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> onAtt;
         juce::ComboBox kitBox;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> kitAtt;
@@ -208,6 +212,7 @@ private:
     WaveView wave;
     juce::OwnedArray<Knob> editKnobs;
     juce::TextButton editLoad { "Load" };
+    juce::TextButton editUnload { "Unload" };
     juce::ToggleButton editReverse { "Reverse" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> editRevAtt;
     MixerPage::Strip editStrip { proc, 0 };

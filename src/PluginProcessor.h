@@ -70,6 +70,7 @@ public:
 
     // Message thread. Mono, trimmed to 4 seconds. Empty file leaves the slot as it was.
     bool loadLaneSample (int lane, const juce::File& file);
+    void unloadLaneSample (int lane);
     void clearLaneSamples();
     bool laneHasSample (int lane) const;
     juce::String laneSampleName (int lane) const;
