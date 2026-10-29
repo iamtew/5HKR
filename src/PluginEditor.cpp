@@ -905,19 +905,18 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
 {
     const bool main = editorPage == 0;
     const bool editing = main && editLane >= 0;
-    const bool grid = main && ! editing;
     const bool mix = editorPage == 1;
     const bool fx = editorPage == 2;
     const bool eq = editorPage == 3;
     const bool sc = editorPage == 4;
-    bankBox.setVisible (main);
-    patBox.setVisible (main);
-    lenBox.setVisible (grid);
-    pageLeft.setVisible (grid);
-    pageRight.setVisible (grid);
-    pageLabel.setVisible (grid);
-    randomBtn.setVisible (grid);
-    clearBtn.setVisible (grid);
+    bankBox.setVisible (true);
+    patBox.setVisible (true);
+    lenBox.setVisible (true);
+    pageLeft.setVisible (true);
+    pageRight.setVisible (true);
+    pageLabel.setVisible (true);
+    randomBtn.setVisible (true);
+    clearBtn.setVisible (true);
     for (auto* row : rows)
     {
         row->setVisible (main);
