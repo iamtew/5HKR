@@ -1093,7 +1093,6 @@ void HKR5AudioProcessorEditor::openSoundEdit (int lane)
 {
     editLane = juce::jlimit (0, hkr::numLanes - 1, lane);
     bindEditLane();
-    proc.audition (editLane, false);
     startTimerHz (50);
     layoutContent();
 }
