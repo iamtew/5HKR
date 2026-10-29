@@ -413,19 +413,57 @@ void HKR5AudioProcessorEditor::PanelLnF::drawRotarySlider (juce::Graphics& g, in
                                                            float pos, float startAngle, float endAngle,
                                                            juce::Slider&)
 {
-    auto bounds = juce::Rectangle<float> ((float) x, (float) y, (float) w, (float) h).reduced (3.f);
+    // Inset so the ticks stay inside the slider, including the 36 px EQ knobs.
+    auto bounds = juce::Rectangle<float> ((float) x, (float) y, (float) w, (float) h).reduced (1.f);
     const float d = juce::jmin (bounds.getWidth(), bounds.getHeight());
-    auto rc = bounds.withSizeKeepingCentre (d, d);
-    g.setColour (kDark);
-    g.fillEllipse (rc);
-    auto cap = rc.reduced (d * 0.16f);
+    if (d < 8.f)
+        return;
+
+    auto area = bounds.withSizeKeepingCentre (d, d);
+    const auto c = area.getCentre();
+    const float tickW = juce::jmax (1.f, d * 0.018f);
+
+    g.setColour (kMetal.withAlpha (0.75f));
+    constexpr int nTicks = 11;
+    for (int i = 0; i < nTicks; ++i)
+    {
+        const float t = (float) i / (float) (nTicks - 1);
+        const float a = startAngle + t * (endAngle - startAngle);
+        const auto p0 = c.getPointOnCircumference (d * 0.48f, a);
+        const auto p1 = c.getPointOnCircumference (d * 0.40f, a);
+        g.drawLine (p0.x, p0.y, p1.x, p1.y, tickW);
+    }
+
+    const float bodyD = d * 0.72f;
+    auto body = area.withSizeKeepingCentre (bodyD, bodyD);
+    g.setColour (juce::Colours::black.withAlpha (0.22f));
+    g.fillEllipse (body.translated (0.f, d * 0.04f).expanded (d * 0.01f));
+    g.setColour (juce::Colours::black.withAlpha (0.4f));
+    g.fillEllipse (body.translated (0.f, d * 0.018f));
+
+    g.setGradientFill (juce::ColourGradient (kChassis.brighter (0.18f), c.x, body.getY(),
+                                              kDark, c.x, body.getBottom(), false));
+    g.fillEllipse (body);
+    g.setColour (kMetal.withAlpha (0.3f));
+    g.drawEllipse (body.reduced (0.6f), juce::jmax (1.f, d * 0.012f));
+
+    const float capD = bodyD * 0.5f;
+    auto cap = area.withSizeKeepingCentre (capD, capD);
     g.setColour (kCyan);
     g.fillEllipse (cap);
+
     const float angle = startAngle + pos * (endAngle - startAngle);
-    const auto c = cap.getCentre();
-    const auto needle = c.getPointOnCircumference (cap.getWidth() * 0.42f, angle);
-    g.setColour (kDark);
-    g.drawLine (c.x, c.y, needle.x, needle.y, 2.2f);
+    juce::Path pointer;
+    pointer.startNewSubPath (c.getPointOnCircumference (bodyD * 0.32f, angle));
+    pointer.lineTo (c.getPointOnCircumference (bodyD * 0.46f, angle));
+    g.setColour (kWhite);
+    g.strokePath (pointer, juce::PathStrokeType (juce::jmax (1.15f, d * 0.028f),
+                                                  juce::PathStrokeType::curved,
+                                                  juce::PathStrokeType::rounded));
+
+    const float pip = juce::jmax (1.6f, d * 0.045f);
+    const auto pipC = c.getPointOnCircumference (capD * 0.28f, angle);
+    g.fillEllipse (pipC.x - pip * 0.5f, pipC.y - pip * 0.5f, pip, pip);
 }
 
 void HKR5AudioProcessorEditor::PanelLnF::drawToggleButton (juce::Graphics& g, juce::ToggleButton& b, bool, bool)
