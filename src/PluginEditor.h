@@ -149,9 +149,10 @@ private:
 
         HKR5AudioProcessorEditor& editor;
         int lane = 0;
-        juce::ToggleButton onBtn;
+        juce::Label name;
         juce::TextButton previewBtn { "Play" };
-        std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> onAtt;
+        juce::ToggleButton mute { "M" }, solo { "S" };
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> muteAtt, soloAtt;
         juce::ComboBox kitBox;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> kitAtt;
         juce::TextButton editBtn { "Edit" };

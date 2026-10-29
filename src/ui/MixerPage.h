@@ -125,11 +125,12 @@ private:
         void drawToggleButton (juce::Graphics& g, juce::ToggleButton& b, bool, bool) override
         {
             auto r = b.getLocalBounds().toFloat().reduced (1.f);
-            const bool on = b.getToggleState();
+            const bool mute = b.getComponentID() == "mute";
+            const bool on = mute ? ! b.getToggleState() : b.getToggleState();
             g.setColour (on ? kMagenta.withAlpha (0.85f) : kDark);
             g.fillRoundedRectangle (r, 3.f);
             g.setColour (on ? kWhite : kCyan.withAlpha (0.55f));
-            if (b.getComponentID() == "mute")
+            if (mute)
             {
                 juce::Path p;
                 const float cx = r.getCentreX() - 2.f, cy = r.getCentreY();

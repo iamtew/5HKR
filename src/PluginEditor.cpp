@@ -85,10 +85,19 @@ void HKR5AudioProcessorEditor::Knob::resized()
 HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln)
     : editor (ed), lane (ln)
 {
-    onBtn.setButtonText (hkr::laneNames[ln]);
-    onAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-        ed.proc.apvts, ParamID::laneOn[ln], onBtn);
-    addAndMakeVisible (onBtn);
+    name.setText (hkr::laneNames[ln], juce::dontSendNotification);
+    name.setJustificationType (juce::Justification::centred);
+    name.setColour (juce::Label::textColourId, kCyan);
+    name.setFont (boldFont (11.f));
+    name.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (name);
+    mute.setComponentID ("mute");
+    addAndMakeVisible (mute);
+    addAndMakeVisible (solo);
+    muteAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        ed.proc.apvts, ParamID::laneOn[ln], mute);
+    soloAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        ed.proc.apvts, ParamID::laneSolo[ln], solo);
     previewBtn.setColour (juce::TextButton::buttonColourId, kCyan);
     previewBtn.setColour (juce::TextButton::textColourOffId, kDark);
     previewBtn.onClick = [this] { editor.proc.audition (lane, false); };
@@ -148,14 +157,16 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
     auto drum = r.removeFromLeft (64).reduced (1);
     const auto nameR = drum.removeFromTop (drum.getHeight() / 2);
     const bool preview = compact && editor.editLane == lane;
-    onBtn.setVisible (! preview);
+    name.setVisible (! preview);
     previewBtn.setVisible (preview);
-    onBtn.setBounds (nameR);
+    name.setBounds (nameR);
     previewBtn.setBounds (nameR);
     if (preview)
         previewBtn.toFront (false);
     kitBox.setBounds (drum);
     editBtn.setBounds (r.removeFromLeft (44).reduced (2, 6));
+    mute.setVisible (! compact);
+    solo.setVisible (! compact);
     for (juce::Component* c : { (juce::Component*) &tune, (juce::Component*) &tuneLabel,
                                 (juce::Component*) &swing, (juce::Component*) &swingLabel,
                                 (juce::Component*) &send, (juce::Component*) &sendLabel })
@@ -166,6 +177,9 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
             c = {};
         return;
     }
+    auto ms = r.removeFromRight (44);
+    mute.setBounds (ms.removeFromLeft (ms.getWidth() / 2).reduced (1, 4));
+    solo.setBounds (ms.reduced (1, 4));
     auto place = [] (juce::Slider& s, juce::Label& lab, juce::Rectangle<int> col)
     {
         lab.setBounds (col.removeFromBottom (12));
@@ -480,10 +494,11 @@ void HKR5AudioProcessorEditor::PanelLnF::drawRotarySlider (juce::Graphics& g, in
 void HKR5AudioProcessorEditor::PanelLnF::drawToggleButton (juce::Graphics& g, juce::ToggleButton& b, bool, bool)
 {
     auto bounds = b.getLocalBounds().toFloat().reduced (2.f);
-    g.setColour (b.getToggleState() ? kMagenta.withAlpha (0.85f) : kDark);
+    const bool lit = b.getComponentID() == "mute" ? ! b.getToggleState() : b.getToggleState();
+    g.setColour (lit ? kMagenta.withAlpha (0.85f) : kDark);
     g.fillRoundedRectangle (bounds, 3.f);
     g.setFont (boldFont (11.f));
-    g.setColour (b.getToggleState() ? kWhite : kCyan);
+    g.setColour (lit ? kWhite : kCyan);
     g.drawText (b.getButtonText(), bounds.toNearestInt(), juce::Justification::centred, false);
 }
 
