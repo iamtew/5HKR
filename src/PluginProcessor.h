@@ -51,6 +51,8 @@ public:
     int currentPattern() const { return curPattern.load (std::memory_order_relaxed); }
     int playhead() const { return playheadUi.load (std::memory_order_relaxed); }
     bool held() const { return heldKey.load (std::memory_order_relaxed) >= 0; }
+    void setTestRun (bool on) { testRun.store (on, std::memory_order_relaxed); }
+    bool isTestRun() const { return testRun.load (std::memory_order_relaxed); }
 
     hkr::SlotData currentSlot() const;
     void setStep (int lane, int index, int value);
@@ -160,6 +162,7 @@ private:
     std::atomic<int> curBank { 0 };
     std::atomic<int> curPattern { 0 };
     std::atomic<int> heldKey { -1 };
+    std::atomic<bool> testRun { false };
     std::atomic<int> playheadUi { -1 };
     std::atomic<int> pendingAudition { -1 }; // packed (lane << 1) | accent, -1 idle
     std::atomic<float> uiEnv[hkr::numLanes] {};

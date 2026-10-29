@@ -415,7 +415,8 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 {
     juce::ScopedNoDenormals noDenormals;
 
-    const bool run = handleKeyTriggers (midi);
+    const bool run = handleKeyTriggers (midi)
+                     || testRun.load (std::memory_order_relaxed);
     midi.clear();
 
     auto out = getBusBuffer (buffer, false, 0);

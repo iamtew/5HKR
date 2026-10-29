@@ -600,6 +600,12 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
         proc.apvts, ParamID::seqPattern, patBox);
     content.addAndMakeVisible (bankBox);
     content.addAndMakeVisible (patBox);
+    playBtn.onClick = [this]
+    {
+        proc.setTestRun (! proc.isTestRun());
+        applyPageVisibility();
+    };
+    content.addChildComponent (playBtn);
 
     lenBox.addItem ("1 bar", 1);
     lenBox.addItem ("2 bars", 2);
@@ -770,6 +776,8 @@ void HKR5AudioProcessorEditor::layoutContent()
     auto tools = r.removeFromTop (28);
     bankBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
     patBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
+    if (proc.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
+        playBtn.setBounds (tools.removeFromLeft (56).reduced (2, 2));
     clearBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
     randomBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
     auto mid = tools.withSizeKeepingCentre (90 + 28 + 72 + 28, tools.getHeight());
@@ -917,6 +925,17 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     pageLabel.setVisible (true);
     randomBtn.setVisible (true);
     clearBtn.setVisible (true);
+    playBtn.setVisible (proc.wrapperType == juce::AudioProcessor::wrapperType_Standalone);
+    if (proc.isTestRun())
+    {
+        playBtn.setColour (juce::TextButton::buttonColourId, kMagenta);
+        playBtn.setColour (juce::TextButton::textColourOffId, kWhite);
+    }
+    else
+    {
+        playBtn.removeColour (juce::TextButton::buttonColourId);
+        playBtn.removeColour (juce::TextButton::textColourOffId);
+    }
     for (auto* row : rows)
     {
         row->setVisible (main);

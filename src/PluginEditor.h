@@ -202,6 +202,7 @@ private:
     ScSpec scSpec { proc };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> scOnAtt, scListenAtt;
     juce::TextButton pageLeft { "<" }, pageRight { ">" };
+    juce::TextButton playBtn { "Play" };
     juce::TextButton randomBtn { "Random" }, clearBtn { "Clear" };
     juce::Label pageLabel;
     WaveView wave;
