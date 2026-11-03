@@ -126,6 +126,10 @@ h1 { font-size: 2rem; }
 
 .tag { margin: 0.2rem 0 0; color: var(--cyan); }
 
+.demo { margin: 0 0 0.7rem; }
+.demo a { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; }
+.demo audio { width: 100%; max-width: 22rem; display: block; }
+
 .actions { display: flex; align-items: center; gap: 1rem; }
 
 .download {
