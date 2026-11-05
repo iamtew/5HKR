@@ -22,10 +22,11 @@ resave:
     $n=0; while (-not (Test-Path '{{SOLUTION}}') -and $n -lt 20) { Start-Sleep -Milliseconds 250; $n++ }
 
 # Meat Bag's assets/logo.png is the only art. Never write that file.
-# PNG → Builds/.../icon.ico, then wipe compiled .res so the next build relinks it.
+# PNG → Builds/.../icon.ico, docs/logo.png, then wipe compiled .res so the next build relinks it.
 # `just resave` does not refresh icon.ico when the PNG changes.
 icon:
     magick assets/logo.png -define icon:auto-resize=256,128,64,48,32,16 Builds\VisualStudio2022\icon.ico
+    Copy-Item assets/logo.png docs/logo.png -Force
     Get-ChildItem Builds\VisualStudio2022 -Recurse -Filter resources.res | Remove-Item -Force
 
 build-debug: resave
