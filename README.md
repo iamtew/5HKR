@@ -16,7 +16,7 @@ The `dist` artifact holds:
 
 - `5HKR-<version>-win-x64-vst3.zip`
 - `5HKR-<version>-win-x64-standalone.zip`
-- `5HKR-<version>-win-x64.msi`
+- `5HKR-<version>-win-x64-installer.msi`
 - `5HKR-<version>-linux-x64-vst3.zip`
 - `5HKR-<version>-linux-x64-standalone.zip`
 - `5HKR-<version>-mac-universal-vst3.zip`
