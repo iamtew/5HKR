@@ -662,10 +662,6 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             sndL += x * s * gL;
             sndR += x * s * gR;
         }
-        dryL *= vol;
-        dryR *= vol;
-        sndL *= vol;
-        sndR *= vol;
         if (r != nullptr)
         {
             l[i] = dryL;
@@ -726,6 +722,13 @@ void HKR5AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
                     r[i] = fR;
             }
         }
+    }
+
+    for (int i = 0; i < n; ++i)
+    {
+        l[i] *= vol;
+        if (r != nullptr)
+            r[i] *= vol;
     }
 
     analyser.push (out);
