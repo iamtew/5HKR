@@ -1,9 +1,10 @@
 ﻿# Launch debug standalone, click through pages, overwrite docs/*.png.
-# Needs a desktop. Tweak $chromeH if the page chevron misses (caption + mute banner).
+# Clicks are editor-client coords (1120x560), scaled to the real client, below any mute banner.
 $ErrorActionPreference = 'Stop'
 
-$chromeH = 70
-# Editor layout at uiScale 1: pageBar after title hit (8+150), reduced(4,4), right chevron last 20px.
+$editorW = 1120
+$editorH = 560
+# pageBar after title hit (8+150), reduced(4,4), right chevron last 20px.
 $nextX = 8 + 150 + 4 + 100 - 10
 $nextY = 8 + 4 + 16
 $aboutX = 40
@@ -17,14 +18,25 @@ public static class Win {
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);
-  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void mouse_event(int f, int x, int y, int d, int e);
-  [StructLayout(LayoutKind.Sequential)]
-  struct RECT { public int L, T, R, B; }
+  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr h, ref POINT p);
+  [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
+  [StructLayout(LayoutKind.Sequential)] struct POINT { public int X, Y; }
   public static bool WindowRect(IntPtr h, out int l, out int t, out int r, out int b) {
     RECT rc; bool ok = GetWindowRect(h, out rc);
     l = rc.L; t = rc.T; r = rc.R; b = rc.B; return ok;
+  }
+  public static bool ClientSize(IntPtr h, out int w, out int ht) {
+    RECT rc; bool ok = GetClientRect(h, out rc);
+    w = rc.R; ht = rc.B; return ok;
+  }
+  public static bool ClientOrigin(IntPtr h, out int x, out int y) {
+    POINT p; p.X = 0; p.Y = 0;
+    bool ok = ClientToScreen(h, ref p);
+    x = p.X; y = p.Y; return ok;
   }
 }
 "@
@@ -52,15 +64,20 @@ function Get-WinRect {
     return @{ L = $l; T = $t; R = $r; B = $b }
 }
 
-function Click-At([int]$x, [int]$y) {
-    $r = Get-WinRect
+function Click-Editor([int]$x, [int]$y) {
+    $cw = 0; $ch = 0; $ox = 0; $oy = 0
+    [void][Win]::ClientSize($hwnd, [ref]$cw, [ref]$ch)
+    [void][Win]::ClientOrigin($hwnd, [ref]$ox, [ref]$oy)
+    $scale = $cw / $editorW
+    $px = $ox + [int]($x * $scale)
+    $py = $oy + [int](($ch - $editorH * $scale) + $y * $scale)
     [void][Win]::ShowWindow($hwnd, 9)
     [void][Win]::SetForegroundWindow($hwnd)
     Start-Sleep -Milliseconds 150
-    [void][Win]::SetCursorPos($r.L + $x, $r.T + $y)
+    [void][Win]::SetCursorPos($px, $py)
     [Win]::mouse_event(0x0002, 0, 0, 0, 0)
     [Win]::mouse_event(0x0004, 0, 0, 0, 0)
-    Start-Sleep -Milliseconds 250
+    Start-Sleep -Milliseconds 400
 }
 
 function Save-Shot([string]$name) {
@@ -79,9 +96,9 @@ Start-Sleep -Seconds 1
 $pages = @('main', 'mixer', 'effects', 'eq', 'sidechain')
 for ($i = 0; $i -lt $pages.Count; $i++) {
     Save-Shot $pages[$i]
-    if ($i -lt $pages.Count - 1) { Click-At $nextX ($chromeH + $nextY) }
+    if ($i -lt $pages.Count - 1) { Click-Editor $nextX $nextY }
 }
-Click-At $aboutX ($chromeH + $aboutY)
+Click-Editor $aboutX $aboutY
 Save-Shot 'about'
 
 Stop-Process -Id $proc.Id -Force
