@@ -73,22 +73,41 @@ struct Voices
         }
     }
 
-    void trigger (int lane, bool accent)
+    void choke (int lane)
     {
         if (lane < 0 || lane >= numLanes)
             return;
         auto& s = st[lane];
+        s.tail = 0.f;
+        s.snap = 0.f;
+        s.click = 0.f;
+        s.env = 0.f;
+        s.level = 0.f;
+        sp[lane].on = false;
+    }
+
+    // vel: 1 ghost, 2 on, 3 accent.
+    void trigger (int lane, int vel)
+    {
+        if (lane < 0 || lane >= numLanes)
+            return;
+        if (lane == chh)
+            choke (ohh);
+        auto& s = st[lane];
         s.age = 0;
+        const bool acc = vel >= 3;
+        const float level = vel >= 3 ? 1.f : (vel == 1 ? 0.35f : 0.65f);
+        const float snap = vel >= 3 ? 1.3f : (vel == 1 ? 0.9f : 1.f);
         if (kit[lane] == kitSample)
         {
-            triggerSample (lane, accent);
+            triggerSample (lane, level);
             return;
         }
         sp[lane].on = false;
-        s.level = accent ? 1.f : 0.65f;
-        s.accent = accent;
+        s.level = level;
+        s.accent = acc;
         s.tail = 1.f;
-        s.snap = accent ? 1.3f : 1.f;
+        s.snap = snap;
         s.click = 1.f;
         s.pitch = 1.f;
         // Squares are free-running like the 808 metal oscillators (each hit
@@ -266,7 +285,7 @@ private:
         c.gain = around (s.gain, editGain[i]);
     }
 
-    void triggerSample (int lane, bool accent)
+    void triggerSample (int lane, float level)
     {
         auto& s = st[lane];
         auto& p = sp[lane];
@@ -275,6 +294,7 @@ private:
         s.tail = 0.f;
         s.snap = 0.f;
         s.env = 0.f;
+        s.accent = false;
         if (v.data == nullptr || v.frames < 1)
             return;
         float a = sampStart[lane];
@@ -293,7 +313,7 @@ private:
         const double fileSr = v.fileRate > 1.0 ? v.fileRate : sr;
         const float ratio = (float) (fileSr / sr) * std::pow (2.f, tune[lane] / 12.f);
         p.inc = (p.rev ? -1.f : 1.f) * std::max (ratio, 1.0e-4f);
-        p.level = accent ? 1.f : 0.65f;
+        p.level = level;
         float atk = sampAtk[lane];
         float rel = sampRel[lane];
         const float sum = atk + rel;

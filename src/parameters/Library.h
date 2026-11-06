@@ -46,8 +46,12 @@ inline std::string writeBankXml (const SlotData slots[Sequencer::numBanks][Seque
                     const int v = getStep (s, lane, i);
                     if (v == 0)
                         continue;
-                    char st[48];
-                    std::snprintf (st, sizeof (st), "<S i=\"%d\" v=\"%d\"/>", i, v);
+                    const int m = getMod (s, lane, i);
+                    char st[64];
+                    if (m != 0)
+                        std::snprintf (st, sizeof (st), "<S i=\"%d\" v=\"%d\" m=\"%d\"/>", i, v, m);
+                    else
+                        std::snprintf (st, sizeof (st), "<S i=\"%d\" v=\"%d\"/>", i, v);
                     o += st;
                 }
                 o += "</LANE>\n";
@@ -125,6 +129,9 @@ inline bool readBankXml (const std::string& xml,
                 if (! readXmlAttr (st, "i", ii) || ! readXmlAttr (st, "v", vv))
                     continue;
                 setStep (slot, lane, std::atoi (ii.c_str()), std::atoi (vv.c_str()));
+                std::string mm;
+                if (readXmlAttr (st, "m", mm))
+                    setMod (slot, lane, std::atoi (ii.c_str()), std::atoi (mm.c_str()));
             }
             lp = laneEnd;
         }

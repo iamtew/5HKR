@@ -57,12 +57,26 @@ public:
     hkr::SlotData currentSlot() const;
     void setStep (int lane, int index, int value);
     int cycleStep (int lane, int index);
-    void audition (int lane, bool accent);
+    int cycleMod (int lane, int index);
+    void audition (int lane, int vel);
     void setLoop (int lane, int length);
     void toggleLoopEnd (int lane, int stepIndex);
     void setPatLen (int length);
     void clearPattern();
     void randomizePattern();
+    void randomizeLane (int lane);
+    void euclideanLane (int lane);
+    void copyPattern();
+    void copyLane (int lane);
+    bool pastePattern();
+    void pasteLane (int lane);
+    void undoGrid();
+    void setFillUi (bool on) { fillUi.store (on, std::memory_order_relaxed); }
+    bool fillHeld() const
+    {
+        return fillUi.load (std::memory_order_relaxed)
+            || fillMidi.load (std::memory_order_relaxed);
+    }
     void renderLaneShot (int lane, float* dest, int n, double sampleRate);
     float voiceEnv (int lane) const;
     float voiceAgeSec (int lane) const;
@@ -115,6 +129,8 @@ private:
     void copySlots (hkr::SlotData dest[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank]) const;
     void applySlots (const hkr::SlotData src[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank]);
     void snapSlot (int bank, int pat, hkr::SlotData& out) const;
+    void storeSlot (int bank, int pat, const hkr::SlotData& src);
+    void pushUndo();
     void writeBanksToState();
     void loadBanksFromState();
     void publishFxOrder (const int* types, int n);
@@ -159,13 +175,21 @@ private:
     std::atomic<uint8_t> slotLen[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank] {};
     std::atomic<uint8_t> slotLoop[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank][hkr::numLanes] {};
     std::atomic<uint32_t> slotWords[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank][hkr::numLanes][hkr::SlotData::wordsPerLane] {};
+    std::atomic<uint32_t> slotMods[hkr::Sequencer::numBanks][hkr::Sequencer::patternsPerBank][hkr::numLanes][hkr::SlotData::wordsPerLane] {};
 
     std::atomic<int> curBank { 0 };
     std::atomic<int> curPattern { 0 };
     std::atomic<int> heldKey { -1 };
     std::atomic<bool> testRun { false };
+    std::atomic<bool> fillUi { false };
+    std::atomic<bool> fillMidi { false };
     std::atomic<int> playheadUi { -1 };
-    std::atomic<int> pendingAudition { -1 }; // packed (lane << 1) | accent, -1 idle
+    std::atomic<int> pendingAudition { -1 }; // packed (lane << 2) | vel, -1 idle
+    hkr::SlotData undoSlot;
+    bool undoValid = false;
+    hkr::SlotData clipSlot;
+    int clipLane = -1; // -1 = whole pattern
+    bool clipValid = false;
     std::atomic<float> uiEnv[hkr::numLanes] {};
     std::atomic<float> uiAgeSec[hkr::numLanes] {};
     hkr::LaneMeters laneMeters;

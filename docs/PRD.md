@@ -8,7 +8,9 @@ A perc groove box: eight tiny analog-ish synth lanes on a 16th grid, with banks 
 
 - Eight lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim
 - 16th-note sequencer, 16 / 32 / 64 steps, per-lane loop length and swing
-- Per-step off / on / accent
+- Per-step off / ghost / on / accent, flam / ratchet, per-lane probability
+- Pattern/lane copy-paste, grid undo, fill hold (pattern 12 / MIDI C3)
+- CHH chokes OHH
 - 3 banks × 12 patterns, hold C1 (Ableton C0) for bank 1 pattern 1
 - Per-lane Tune and mute
 - Per-lane one-shot sample (last kit choice), stored in the patch

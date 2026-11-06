@@ -14,13 +14,18 @@ Click **5HKR** + version in the top left for About. **Check for update** looks a
 
 Lanes: CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. **M** / **S** on the right mute and solo that voice (same as the mixer). The kit menu under the name picks 707 / 808 / 909 / Linn / Sample for that lane only (default 808). Mix kits across lanes. Drop a wav, aiff, flac, or ogg on a lane to load it and switch that lane to Sample. The file is summed to mono, trimmed to 4 seconds, and saved in the patch.
 
-- Click a cell: off → on (cyan) → accent (magenta). On and accent also preview the lane.
+- Click a cell: off → ghost (dim cyan) → on (cyan) → accent (magenta). On, ghost, and accent also preview the lane.
+- Shift-click a cell to cycle flam (dot) / ratchet ×2 / ratchet ×4. Empty cells stay empty.
 - Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length.
-- **Tune** ±12 st, **Swing** 50–75%, and **FX** 0–100% per lane (how much of that lane goes into the effects chain).
+- Right-click a lane name: Copy lane, Paste lane, Random lane, Euclidean (fills the loop; empty lane uses half the steps).
+- **Tune** ±12 st, **Swing** 50–75%, **FX** 0–100% (into the effects chain), **Prob** 0–100% (chance each step fires; default 100).
+- CHH chokes OHH.
 - **Edit** on a lane opens that sound. The lane names, kit menus and Edit buttons stay put on the left; Edit on another lane switches sound, Edit on the same lane goes back to the grid. The edited lane name becomes **Play** (preview that sound; mute stays as it was). Synth kits: Tune / Decay / Click / Drive / HPF / Tone / Level offset the kit spec (50% is the stock sound). Sample: Tune / Start / End / Attack / Release / Level / Reverse, plus **Load** / **Unload** (or drop a file on the waveform). Attack and Release are fades over the cropped region; they draw as a faded overlay on the waveform. Unload drops the file; pick a synth kit to leave Sample. A magenta line on the waveform follows the hit while it plays. The mixer strip for that lane sits on the right (mute/solo live there while the grid M/S are hidden).
 - **Bank** / **Pat** — 3 banks × 12 patterns.
 - **1 / 2 / 4 bar** — 16 / 32 / 64 sixteenths. Extra bars tile the current length. Use the step pager when longer than one bar.
 - **Random** / **Clear** — fill or wipe every step of the current pattern. Loops, length, and knobs stay.
+- **Copy** / **Paste** — whole current pattern. Ctrl+C / Ctrl+V. Ctrl+Z undoes the last grid edit (one level, toggles).
+- **Fill** — hold to play pattern 12 of the current bank without changing the selected pattern. MIDI note 60 (C3) does the same while a pattern key is held (or standalone Play).
 
 ## Mixer
 
@@ -40,7 +45,7 @@ Saved sessions and `.5hkrb` banks keep their own patterns.
 
 ## MIDI
 
-Hold C1 for bank 1 pattern 1 (Ableton C0). C2 is bank 2 pattern 1. Mapping starts at MIDI note 24; 36 slots. VST3 follows host BPM; standalone uses the Tempo parameter (120 unless automated).
+Hold C1 for bank 1 pattern 1 (Ableton C0). C2 is bank 2 pattern 1. Mapping starts at MIDI note 24; 36 slots. Hold C3 (note 60) for the bank’s fill (pattern 12). VST3 follows host BPM; standalone uses the Tempo parameter (120 unless automated).
 
 ## Library
 

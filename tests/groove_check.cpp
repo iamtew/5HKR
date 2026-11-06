@@ -24,6 +24,8 @@ int main()
     assert (Sequencer::mapKeyToSlot (59, bank, pat) && bank == 2 && pat == 11);
     assert (! Sequencer::mapKeyToSlot (23, bank, pat));
     assert (! Sequencer::mapKeyToSlot (60, bank, pat));
+    assert (Sequencer::fillNote == 60);
+    assert (Sequencer::fillPattern == 11);
 
     SlotData s;
     setStep (s, chh, 0, 1);
@@ -34,6 +36,14 @@ int main()
     assert (getStep (s, chh, 2) == 0);
     setStep (s, chh, 63, 2);
     assert (getStep (s, chh, 63) == 2);
+    setStep (s, chh, 3, 3);
+    assert (getStep (s, chh, 3) == 3);
+    assert (nextVel (0) == 3 && nextVel (3) == 1 && nextVel (1) == 2 && nextVel (2) == 0);
+    setMod (s, chh, 0, 1);
+    setMod (s, chh, 1, 3);
+    assert (getMod (s, chh, 0) == 1);
+    assert (getMod (s, chh, 1) == 3);
+    assert (getMod (s, chh, 2) == 0);
 
     SlotData grow;
     setStep (grow, chh, 0, 2);
@@ -99,19 +109,23 @@ int main()
     Sequencer seq;
     seq.prepare (44100.0);
     float swing[numLanes];
+    float prob[numLanes];
     for (int i = 0; i < numLanes; ++i)
+    {
         swing[i] = 0.5f;
-    Hit hits[64];
-    const int n0 = seq.advance (groove, 1, 120.f, true, swing, 0xff, hits, 64);
+        prob[i] = 100.f;
+    }
+    Hit hits[128];
+    const int n0 = seq.advance (groove, 1, 120.f, true, swing, prob, 0xff, hits, 128);
     assert (n0 > 0);
     assert (hits[0].offset == 0);
     assert (seq.playhead() >= 0);
 
     const int stepSamples = (int) std::ceil (sps);
-    seq.advance (groove, stepSamples, 120.f, true, swing, 0xff, hits, 64);
+    seq.advance (groove, stepSamples, 120.f, true, swing, prob, 0xff, hits, 128);
     assert (seq.playhead() >= 1);
 
-    const int nOff = seq.advance (groove, 64, 120.f, false, swing, 0xff, hits, 64);
+    const int nOff = seq.advance (groove, 64, 120.f, false, swing, prob, 0xff, hits, 128);
     assert (nOff == 0);
     assert (seq.playhead() == -1);
 
@@ -121,12 +135,65 @@ int main()
             fillFactory (slots[b][p], b, p);
     slots[1][0].loop[clave] = 5;
     setStep (slots[1][0], clave, 4, 2);
+    setMod (slots[1][0], clave, 4, 2);
     const auto xml = writeBankXml (slots);
     SlotData back[Sequencer::numBanks][Sequencer::patternsPerBank];
     assert (readBankXml (xml, back));
     assert (back[1][0].loop[clave] == 5);
     assert (getStep (back[1][0], clave, 4) == 2);
+    assert (getMod (back[1][0], clave, 4) == 2);
     assert (getStep (back[0][0], chh, 0) == getStep (slots[0][0], chh, 0));
+    assert (getMod (back[0][0], chh, 0) == 0);
+
+    {
+        SlotData euc;
+        euc.len = 16;
+        euc.loop[shaker] = 8;
+        euclideanLaneSteps (euc, shaker);
+        int k = 0;
+        for (int i = 0; i < 8; ++i)
+            if (getStep (euc, shaker, i) > 0)
+                ++k;
+        assert (k == 4);
+        assert (getStep (euc, shaker, 8) == 0);
+        int first = -1;
+        for (int i = 0; i < 8; ++i)
+            if (getStep (euc, shaker, i) > 0)
+            {
+                first = i;
+                break;
+            }
+        assert (first >= 0);
+        assert (getStep (euc, shaker, first) == 2);
+    }
+
+    {
+        SlotData flam;
+        flam.len = 16;
+        setStep (flam, rim, 0, 2);
+        setMod (flam, rim, 0, 1);
+        Sequencer sq;
+        sq.prepare (44100.0);
+        const int nFlam = sq.advance (flam, (int) std::ceil (sps), 120.f, true, swing, prob, 0xff, hits, 128);
+        int rimHits = 0;
+        for (int i = 0; i < nFlam; ++i)
+            if (hits[i].lane == rim)
+                ++rimHits;
+        assert (rimHits == 2);
+    }
+
+    {
+        SlotData silent;
+        silent.len = 16;
+        setStep (silent, chh, 0, 2);
+        float zeroProb[numLanes];
+        for (int i = 0; i < numLanes; ++i)
+            zeroProb[i] = 0.f;
+        Sequencer sq;
+        sq.prepare (44100.0);
+        const int nSkip = sq.advance (silent, 1, 120.f, true, swing, zeroProb, 0xff, hits, 128);
+        assert (nSkip == 0);
+    }
 
     // Factory grids are 16 steps of . x X, and no two slots share a groove.
     {
@@ -207,7 +274,7 @@ int main()
                 kits[i] = k;
             v.setKit (kits);
             v.setTune (zeroTune);
-            v.trigger (lane, true);
+            v.trigger (lane, 3);
             float e = 0.f, peak = 0.f, late = 0.f;
             for (int i = 0; i < n; ++i)
             {
@@ -250,7 +317,7 @@ int main()
             v.setKit (kits);
             v.setTune (zeroTune);
             v.setEdit (decay, half, half, half, half, zeroDrive);
-            v.trigger (chh, true);
+            v.trigger (chh, 3);
             float late = 0.f;
             for (int i = 0; i < 800; ++i)
             {
@@ -278,7 +345,7 @@ int main()
             v.setKit (kits);
             v.setTune (zeroTune);
             v.setEdit (half, half, half, half, half, drive);
-            v.trigger (lane, true);
+            v.trigger (lane, 3);
             for (int i = 0; i < n; ++i)
             {
                 v.process (lanes);
@@ -370,7 +437,7 @@ int main()
         v.setKit (kits);
         v.setTune (tune);
         v.setEdit (half, half, half, half, half, drive);
-        v.trigger (chh, true);
+        v.trigger (chh, 3);
         v.process (lanes);
         assert (lanes[chh] == 0.f);
 
@@ -383,7 +450,7 @@ int main()
         start[chh] = 0.5f;
         v.setSamples (views);
         v.setSampleRegion (start, end, rev, atk, rel);
-        v.trigger (chh, true);
+        v.trigger (chh, 3);
         float buf[n];
         for (int i = 0; i < n; ++i)
         {
@@ -403,7 +470,7 @@ int main()
         atk[chh] = 0.5f;
         v.setSamples (views);
         v.setSampleRegion (start, end, rev, atk, rel);
-        v.trigger (chh, true);
+        v.trigger (chh, 3);
         v.process (lanes);
         assert (std::abs (lanes[chh]) < 0.02f);
         for (int i = 0; i < 80; ++i)
@@ -412,7 +479,7 @@ int main()
 
         atk[chh] = 0.f;
         v.setSampleRegion (start, end, rev, atk, rel);
-        v.trigger (chh, true);
+        v.trigger (chh, 3);
         for (int i = 0; i < 50; ++i)
             v.process (lanes);
         assert (lanes[chh] > 0.5f);
@@ -485,6 +552,24 @@ int main()
         for (int i = 0; i < 64; ++i)
             acc += std::fabs (s.process (1.f));
         assert (acc < 1e-4f);
+    }
+
+    {
+        Voices v;
+        v.prepare (44100.0);
+        int kits[numLanes];
+        float tune[numLanes] {};
+        for (int i = 0; i < numLanes; ++i)
+            kits[i] = kit808;
+        v.setKit (kits);
+        v.setTune (tune);
+        float lanes[numLanes] {};
+        v.trigger (ohh, 3);
+        v.process (lanes);
+        assert (std::abs (lanes[ohh]) > 0.05f);
+        v.trigger (chh, 3);
+        v.process (lanes);
+        assert (std::abs (lanes[ohh]) < 0.02f);
     }
 
     std::vector<std::string> tags { "0.0.2", "v0.0.1" };

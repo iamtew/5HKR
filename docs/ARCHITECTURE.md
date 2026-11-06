@@ -5,8 +5,8 @@ PluginProcessor owns APVTS, Sequencer, Voices, LaneMixer, FxChain, post EQ, EqAn
 Audio thread:
 
 1. MIDI note-on in C1–range selects a slot; the groove runs while that key is held
-2. Sequencer::advance emits Hits (lane, accent, sample offset) using host BPM in VST3, else seqTempo
-3. Voices::trigger then Voices::process fill eight lane samples (`laneKit*` picks 707 / 808 / 909 / Linn, or Sample)
+2. Sequencer::advance emits Hits (lane, vel, sample offset) using host BPM in VST3, else seqTempo. Probability can skip a step; flam/ratchet add extra Hits. Fill hold reads pattern 12 of the current bank.
+3. Voices::trigger then Voices::process fill eight lane samples (`laneKit*` picks 707 / 808 / 909 / Linn, or Sample). CHH trigger chokes OHH.
 4. LaneMixer: per-lane trim, 3-band EQ, DJ filter, fader, solo mask, constant-power pan (stereo)
 5. Per-lane FX send splits that processed lane dry vs send bus; send goes through the global FxChain (chorus, delay, flanger, phaser, reverb)
 6. Dry + FX, then 5-band post EQ, then HP/LP on the input bus (always, for the key spectrum) into Ducker when on (full mix including FX tails). Listen replaces the output with that filtered key, then EqAnalyser + OutputMeter

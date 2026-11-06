@@ -20,6 +20,7 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    bool keyPressed (const juce::KeyPress&) override;
 
 private:
     struct Content : public juce::Component
@@ -28,7 +29,24 @@ private:
         void paint (juce::Graphics& g) override { ed.paintContent (g); }
         void resized() override { ed.layoutContent(); }
         void mouseUp (const juce::MouseEvent& e) override { ed.contentMouseUp (e); }
+        bool keyPressed (const juce::KeyPress& k) override { return ed.onGridKey (k); }
         HKR5AudioProcessorEditor& ed;
+    };
+
+    struct FillBtn : public juce::TextButton
+    {
+        explicit FillBtn (HKR5AudioProcessorEditor& e) : juce::TextButton ("Fill"), editor (e) {}
+        void mouseDown (const juce::MouseEvent& e) override
+        {
+            editor.proc.setFillUi (true);
+            juce::TextButton::mouseDown (e);
+        }
+        void mouseUp (const juce::MouseEvent& e) override
+        {
+            editor.proc.setFillUi (false);
+            juce::TextButton::mouseUp (e);
+        }
+        HKR5AudioProcessorEditor& editor;
     };
     void paintContent (juce::Graphics&);
     void layoutContent();
@@ -45,6 +63,8 @@ private:
     void setEditorPage (int page);
     void applyPageVisibility();
     void refreshGrid();
+    bool onGridKey (const juce::KeyPress&);
+    void showLaneMenu (int lane);
     void parameterChanged (const juce::String&, float) override;
     void openSoundEdit (int lane);
     void leaveSoundEdit();
@@ -167,8 +187,12 @@ private:
         juce::Slider send;
         juce::Label sendLabel;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sendAtt;
+        juce::Slider prob;
+        juce::Label probLabel;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> probAtt;
         juce::Rectangle<int> cells[16];
         int values[16] {};
+        int mods[16] {};
         int play = -1;
         int loopCell = -1;
         bool hot = false;
@@ -222,6 +246,8 @@ private:
     juce::TextButton pageLeft { "<" }, pageRight { ">" };
     juce::TextButton playBtn { "Play" };
     juce::TextButton randomBtn { "Random" }, clearBtn { "Clear" };
+    juce::TextButton copyBtn { "Copy" }, pasteBtn { "Paste" };
+    FillBtn fillBtn { *this };
     juce::Label pageLabel;
     WaveView wave;
     juce::OwnedArray<Knob> editKnobs;

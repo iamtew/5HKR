@@ -31,7 +31,8 @@ inline constexpr int numKits = 5;
 inline constexpr const char* kitNames[numKits] = { "707", "808", "909", "Linn", "Sample" };
 enum Kit : int { kit707 = 0, kit808, kit909, kitLinn, kitSample };
 
-// 2 bits per step: 0 off, 1 on, 2 accent. 16 steps per uint32.
+// 2 bits per step: 0 off, 1 on, 2 accent, 3 ghost. 16 steps per uint32.
+// Parallel mods: 0 none, 1 flam, 2 ratchet x2, 3 ratchet x4.
 struct SlotData
 {
     static constexpr int maxSteps = 64;
@@ -40,6 +41,7 @@ struct SlotData
     uint8_t len = 16; // 16 / 32 / 64 sixteenths
     uint8_t loop[numLanes] {};
     uint32_t words[numLanes][wordsPerLane] {};
+    uint32_t mods[numLanes][wordsPerLane] {};
 
     SlotData()
     {
@@ -47,6 +49,23 @@ struct SlotData
             loop[i] = 16;
     }
 };
+
+inline int packed2 (const uint32_t words[SlotData::wordsPerLane], int i)
+{
+    if (i < 0 || i >= SlotData::maxSteps)
+        return 0;
+    const int sh = (i % 16) * 2;
+    return (int) ((words[i / 16] >> sh) & 3u);
+}
+
+inline void pack2 (uint32_t words[SlotData::wordsPerLane], int i, int v)
+{
+    if (i < 0 || i >= SlotData::maxSteps)
+        return;
+    const int sh = (i % 16) * 2;
+    const uint32_t mask = 3u << sh;
+    words[i / 16] = (words[i / 16] & ~mask) | (((uint32_t) (v & 3)) << sh);
+}
 
 inline int clampLen (int v)
 {
@@ -72,22 +91,45 @@ inline double swingOffset (float swing, double samplesPerStep)
 
 inline int getStep (const SlotData& s, int lane, int i)
 {
-    if (lane < 0 || lane >= numLanes || i < 0 || i >= SlotData::maxSteps)
+    if (lane < 0 || lane >= numLanes)
         return 0;
-    const int w = i / 16;
-    const int sh = (i % 16) * 2;
-    return (int) ((s.words[lane][w] >> sh) & 3u);
+    return packed2 (s.words[lane], i);
 }
 
 inline void setStep (SlotData& s, int lane, int i, int v)
 {
-    if (lane < 0 || lane >= numLanes || i < 0 || i >= SlotData::maxSteps)
+    if (lane < 0 || lane >= numLanes)
         return;
-    const int w = i / 16;
-    const int sh = (i % 16) * 2;
-    const uint32_t mask = 3u << sh;
-    s.words[lane][w] = (s.words[lane][w] & ~mask) | (((uint32_t) (v & 3)) << sh);
+    pack2 (s.words[lane], i, v);
 }
+
+inline int getMod (const SlotData& s, int lane, int i)
+{
+    if (lane < 0 || lane >= numLanes)
+        return 0;
+    return packed2 (s.mods[lane], i);
+}
+
+inline void setMod (SlotData& s, int lane, int i, int v)
+{
+    if (lane < 0 || lane >= numLanes)
+        return;
+    pack2 (s.mods[lane], i, v);
+}
+
+// off → ghost → on → accent → off. Keeps 1=on and 2=accent for old banks.
+inline int nextVel (int v)
+{
+    if (v == 0)
+        return 3;
+    if (v == 3)
+        return 1;
+    if (v == 1)
+        return 2;
+    return 0;
+}
+
+inline int quieterVel (int v) { return v >= 3 ? 2 : 1; }
 
 // Grow 16→32/64 by tiling the current length so extra bars are not empty.
 inline void setPatternLen (SlotData& s, int newLen)
@@ -97,7 +139,10 @@ inline void setPatternLen (SlotData& s, int newLen)
     if (newLen > old)
         for (int lane = 0; lane < numLanes; ++lane)
             for (int i = old; i < newLen; ++i)
+            {
                 setStep (s, lane, i, getStep (s, lane, i % old));
+                setMod (s, lane, i, getMod (s, lane, i % old));
+            }
     for (int lane = 0; lane < numLanes; ++lane)
     {
         int lp = std::max (1, (int) s.loop[lane]);
@@ -114,7 +159,10 @@ inline void clearPatternSteps (SlotData& s)
     const int n = clampLen ((int) s.len);
     for (int lane = 0; lane < numLanes; ++lane)
         for (int i = 0; i < n; ++i)
+        {
             setStep (s, lane, i, 0);
+            setMod (s, lane, i, 0);
+        }
 }
 
 // ~55% off, ~35% on, ~10% accent. LCG so tests can pin a seed.
@@ -128,7 +176,66 @@ inline void randomizePatternSteps (SlotData& s, uint32_t seed)
             x = x * 1664525u + 1013904223u;
             const int r = (int) (x % 100u);
             setStep (s, lane, i, r < 10 ? 2 : (r < 45 ? 1 : 0));
+            setMod (s, lane, i, 0);
         }
+}
+
+inline void randomizeLaneSteps (SlotData& s, int lane, uint32_t seed)
+{
+    if (lane < 0 || lane >= numLanes)
+        return;
+    const int n = clampLen ((int) s.len);
+    uint32_t x = seed ? seed : 1u;
+    for (int i = 0; i < n; ++i)
+    {
+        x = x * 1664525u + 1013904223u;
+        const int r = (int) (x % 100u);
+        setStep (s, lane, i, r < 10 ? 2 : (r < 45 ? 1 : 0));
+        setMod (s, lane, i, 0);
+    }
+}
+
+// n = lane loop. k = on-count in that loop, or n/2 if empty.
+inline void euclideanLaneSteps (SlotData& s, int lane)
+{
+    if (lane < 0 || lane >= numLanes)
+        return;
+    const int nPat = clampLen ((int) s.len);
+    const int n = std::min (nPat, std::max (1, (int) s.loop[lane]));
+    int k = 0;
+    for (int i = 0; i < n; ++i)
+        if (getStep (s, lane, i) > 0)
+            ++k;
+    if (k == 0)
+        k = std::max (1, n / 2);
+    k = std::min (k, n);
+    int acc = 0;
+    bool first = true;
+    for (int i = 0; i < nPat; ++i)
+    {
+        int v = 0;
+        if (i < n)
+        {
+            acc += k;
+            if (acc >= n)
+            {
+                acc -= n;
+                v = first ? 2 : 1;
+                first = false;
+            }
+        }
+        setStep (s, lane, i, v);
+        setMod (s, lane, i, 0);
+    }
+}
+
+inline void copyLaneGrid (SlotData& dest, int destLane, const SlotData& src, int srcLane)
+{
+    if (destLane < 0 || destLane >= numLanes || srcLane < 0 || srcLane >= numLanes)
+        return;
+    dest.loop[destLane] = src.loop[srcLane];
+    std::memcpy (dest.words[destLane], src.words[srcLane], sizeof (src.words[srcLane]));
+    std::memcpy (dest.mods[destLane], src.mods[srcLane], sizeof (src.mods[srcLane]));
 }
 
 // Factory grooves, one per slot. Edit the grids directly: each string is
@@ -296,13 +403,15 @@ struct Hit
 {
     int offset = 0;
     int lane = 0;
-    bool accent = false;
+    int vel = 2; // 1 ghost, 2 on, 3 accent
 };
 
 struct Sequencer
 {
     static constexpr int numBanks = 3;
     static constexpr int patternsPerBank = 12;
+    static constexpr int fillPattern = 11; // pattern 12, 0-based
+    static constexpr int fillNote = 60;    // C3, first key above the 36 slot map
     static constexpr int keyMapBase = 24; // C1 / Ableton C0 = bank 1 pattern 1
 
     static bool mapKeyToSlot (int note, int& bank, int& pat)
@@ -326,8 +435,8 @@ struct Sequencer
     int playhead() const { return head; }
 
     int advance (const SlotData& slot, int nSamples, float bpm, bool running,
-                 const float swing[numLanes], uint8_t enabled,
-                 Hit* hits, int maxHits)
+                 const float swing[numLanes], const float probPct[numLanes],
+                 uint8_t enabled, Hit* hits, int maxHits)
     {
         if (! running)
         {
@@ -354,6 +463,20 @@ struct Sequencer
         const double loopSamps = (double) len * sps;
         int nHits = 0;
 
+        auto push = [&] (double t, int lane, int vel)
+        {
+            for (int k = -1; k <= 1; ++k)
+            {
+                const double tt = t + (double) k * loopSamps;
+                if (tt < start || tt >= end)
+                    continue;
+                if (nHits >= maxHits)
+                    return false;
+                hits[nHits++] = { (int) (tt - start), lane, vel };
+            }
+            return true;
+        };
+
         for (int st = 0; st < len; ++st)
         {
             for (int lane = 0; lane < numLanes; ++lane)
@@ -364,20 +487,46 @@ struct Sequencer
                 const int v = getStep (slot, lane, ls);
                 if (v == 0)
                     continue;
+                const float pct = probPct != nullptr ? probPct[lane] : 100.f;
+                if (pct < 100.f)
+                {
+                    if (pct <= 0.f)
+                        continue;
+                    rng = rng * 1664525u + 1013904223u;
+                    if ((int) (rng % 100u) >= (int) pct)
+                        continue;
+                }
 
                 double t = (double) st * sps;
                 if ((ls & 1) != 0)
                     t += swingOffset (swing[lane], sps);
 
-                for (int k = -1; k <= 1; ++k)
+                const int mod = getMod (slot, lane, ls);
+                int nRep = 1;
+                double frac[4] { 0.0, 0.0, 0.0, 0.0 };
+                int vel[4] { v, v, v, v };
+                if (mod == 1)
                 {
-                    const double tt = t + (double) k * loopSamps;
-                    if (tt < start || tt >= end)
-                        continue;
-                    if (nHits >= maxHits)
-                        return nHits;
-                    hits[nHits++] = { (int) (tt - start), lane, v == 2 };
+                    nRep = 2;
+                    frac[1] = 1.0 / 6.0;
+                    vel[1] = quieterVel (v);
                 }
+                else if (mod == 2)
+                {
+                    nRep = 2;
+                    frac[1] = 0.5;
+                }
+                else if (mod == 3)
+                {
+                    nRep = 4;
+                    frac[1] = 0.25;
+                    frac[2] = 0.5;
+                    frac[3] = 0.75;
+                }
+
+                for (int r = 0; r < nRep; ++r)
+                    if (! push (t + frac[r] * sps, lane, vel[r]))
+                        return nHits;
             }
         }
 
@@ -393,6 +542,7 @@ private:
     double phase = 0.0;
     int head = -1;
     bool wasRun = false;
+    uint32_t rng = 1u;
 };
 
 static_assert (sizeof (factoryPats) / sizeof (factoryPats[0]) == Sequencer::numBanks

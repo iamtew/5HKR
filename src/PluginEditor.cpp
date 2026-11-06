@@ -102,7 +102,7 @@ HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln
         ed.proc.apvts, ParamID::laneSolo[ln], solo);
     previewBtn.setColour (juce::TextButton::buttonColourId, kCyan);
     previewBtn.setColour (juce::TextButton::textColourOffId, kDark);
-    previewBtn.onClick = [this] { editor.proc.audition (lane, false); };
+    previewBtn.onClick = [this] { editor.proc.audition (lane, 2); };
     addChildComponent (previewBtn);
     for (int i = 0; i < hkr::numKits; ++i)
         kitBox.addItem (hkr::kitNames[i], i + 1);
@@ -131,15 +131,19 @@ HKR5AudioProcessorEditor::LaneRow::LaneRow (HKR5AudioProcessorEditor& ed, int ln
     setupKnob (tune, tuneLabel);
     setupKnob (swing, swingLabel);
     setupKnob (send, sendLabel);
+    setupKnob (prob, probLabel);
     tuneAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         ed.proc.apvts, ParamID::laneTune[ln], tune);
     swingAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         ed.proc.apvts, ParamID::laneSwing[ln], swing);
     sendAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         ed.proc.apvts, ParamID::laneSend[ln], send);
+    probAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        ed.proc.apvts, ParamID::laneProb[ln], prob);
     tune.onValueChange = [this] { refreshKnobLabels(); };
     swing.onValueChange = [this] { refreshKnobLabels(); };
     send.onValueChange = [this] { refreshKnobLabels(); };
+    prob.onValueChange = [this] { refreshKnobLabels(); };
     refreshKnobLabels();
 }
 
@@ -150,6 +154,8 @@ void HKR5AudioProcessorEditor::LaneRow::refreshKnobLabels()
     swingLabel.setText ("Swing " + juce::String (juce::roundToInt ((float) swing.getValue() * 100.f)) + "%",
                         juce::dontSendNotification);
     sendLabel.setText ("FX " + juce::String (juce::roundToInt ((float) send.getValue() * 100.f)) + "%",
+                       juce::dontSendNotification);
+    probLabel.setText ("Prob " + juce::String (juce::roundToInt ((float) prob.getValue())) + "%",
                        juce::dontSendNotification);
 }
 
@@ -171,7 +177,8 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
     solo.setVisible (! compact);
     for (juce::Component* c : { (juce::Component*) &tune, (juce::Component*) &tuneLabel,
                                 (juce::Component*) &swing, (juce::Component*) &swingLabel,
-                                (juce::Component*) &send, (juce::Component*) &sendLabel })
+                                (juce::Component*) &send, (juce::Component*) &sendLabel,
+                                (juce::Component*) &prob, (juce::Component*) &probLabel })
         c->setVisible (! compact);
     if (compact)
     {
@@ -187,9 +194,10 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
         lab.setBounds (col.removeFromBottom (12));
         s.setBounds (col.reduced (1));
     };
-    place (tune, tuneLabel, r.removeFromLeft (52));
-    place (swing, swingLabel, r.removeFromLeft (52));
-    place (send, sendLabel, r.removeFromLeft (52));
+    place (tune, tuneLabel, r.removeFromLeft (48));
+    place (swing, swingLabel, r.removeFromLeft (48));
+    place (send, sendLabel, r.removeFromLeft (48));
+    place (prob, probLabel, r.removeFromLeft (48));
     const int cellW = juce::jmax (1, r.getWidth() / 16);
     for (int i = 0; i < 16; ++i)
         cells[i] = { r.getX() + i * cellW, r.getY() + 4, cellW - 2, r.getHeight() - 8 };
@@ -209,11 +217,20 @@ void HKR5AudioProcessorEditor::LaneRow::paint (juce::Graphics& g)
         auto c = cells[i].toFloat();
         if (values[i] == 2)
             g.setColour (kMagenta);
+        else if (values[i] == 3)
+            g.setColour (kCyan.withAlpha (0.4f));
         else if (values[i] == 1)
             g.setColour (kCyan.withAlpha (0.85f));
         else
             g.setColour (kDark.brighter (0.08f));
         g.fillRoundedRectangle (c, 3.f);
+        if (values[i] > 0 && mods[i] > 0)
+        {
+            g.setColour (kWhite);
+            g.setFont (boldFont (9.f));
+            const char* mark = mods[i] == 1 ? "." : (mods[i] == 2 ? "2" : "4");
+            g.drawText (mark, cells[i], juce::Justification::centred, false);
+        }
         if (loopCell == i)
         {
             g.setColour (kMagenta);
@@ -236,6 +253,11 @@ void HKR5AudioProcessorEditor::LaneRow::mouseDown (const juce::MouseEvent& e)
 {
     if (compact)
         return;
+    if (e.mods.isPopupMenu() && name.getBounds().contains (e.getPosition()))
+    {
+        editor.showLaneMenu (lane);
+        return;
+    }
     for (int i = 0; i < 16; ++i)
     {
         if (! cells[i].contains (e.getPosition()))
@@ -243,11 +265,17 @@ void HKR5AudioProcessorEditor::LaneRow::mouseDown (const juce::MouseEvent& e)
         const int idx = editor.stepPage * 16 + i;
         if (e.mods.isPopupMenu())
             editor.proc.toggleLoopEnd (lane, idx);
+        else if (e.mods.isShiftDown())
+        {
+            mods[i] = editor.proc.cycleMod (lane, idx);
+            if (values[i] > 0)
+                editor.proc.audition (lane, values[i]);
+        }
         else
         {
             values[i] = editor.proc.cycleStep (lane, idx);
             if (values[i] > 0)
-                editor.proc.audition (lane, values[i] == 2);
+                editor.proc.audition (lane, values[i]);
         }
         editor.refreshGrid();
         return;
@@ -286,7 +314,10 @@ void HKR5AudioProcessorEditor::LaneRow::refresh (const hkr::SlotData& slot, int 
     loopCell = -1;
     const int base = page * 16;
     for (int i = 0; i < 16; ++i)
+    {
         values[i] = hkr::getStep (slot, lane, base + i);
+        mods[i] = hkr::getMod (slot, lane, base + i);
+    }
     const int lp = juce::jlimit (1, (int) slot.len, (int) slot.loop[lane]);
     const int endIdx = lp - 1;
     if (endIdx >= base && endIdx < base + 16)
@@ -802,6 +833,18 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
         proc.clearPattern();
         refreshGrid();
     };
+    copyBtn.onClick = [this]
+    {
+        proc.copyPattern();
+    };
+    pasteBtn.onClick = [this]
+    {
+        if (proc.pastePattern())
+            refreshGrid();
+    };
+    content.addAndMakeVisible (copyBtn);
+    content.addAndMakeVisible (pasteBtn);
+    content.addAndMakeVisible (fillBtn);
     content.addAndMakeVisible (randomBtn);
     content.addAndMakeVisible (clearBtn);
 
@@ -873,7 +916,9 @@ HKR5AudioProcessorEditor::HKR5AudioProcessorEditor (HKR5AudioProcessor& p)
     baseW = kEditorW;
     baseH = kEditorH;
     content.setSize (baseW, baseH);
+    content.setWantsKeyboardFocus (true);
     addAndMakeVisible (content);
+    setWantsKeyboardFocus (true);
 
     const float s = juce::jlimit (0.4f, 1.5f, proc.uiScale);
     setResizable (true, true);
@@ -895,6 +940,11 @@ HKR5AudioProcessorEditor::~HKR5AudioProcessorEditor()
 void HKR5AudioProcessorEditor::paint (juce::Graphics& g)
 {
     g.fillAll (kChassis);
+}
+
+bool HKR5AudioProcessorEditor::keyPressed (const juce::KeyPress& k)
+{
+    return onGridKey (k);
 }
 
 void HKR5AudioProcessorEditor::resized()
@@ -945,8 +995,11 @@ void HKR5AudioProcessorEditor::layoutContent()
     patBox.setBounds (tools.removeFromLeft (90).reduced (2, 2));
     if (proc.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
         playBtn.setBounds (tools.removeFromLeft (56).reduced (2, 2));
-    clearBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
-    randomBtn.setBounds (tools.removeFromRight (72).reduced (2, 2));
+    fillBtn.setBounds (tools.removeFromLeft (48).reduced (2, 2));
+    clearBtn.setBounds (tools.removeFromRight (56).reduced (2, 2));
+    randomBtn.setBounds (tools.removeFromRight (64).reduced (2, 2));
+    pasteBtn.setBounds (tools.removeFromRight (52).reduced (2, 2));
+    copyBtn.setBounds (tools.removeFromRight (52).reduced (2, 2));
     auto mid = tools.withSizeKeepingCentre (90 + 28 + 72 + 28, tools.getHeight());
     lenBox.setBounds (mid.removeFromLeft (90).reduced (2, 2));
     pageLeft.setBounds (mid.removeFromLeft (28).reduced (2, 2));
@@ -1040,6 +1093,52 @@ void HKR5AudioProcessorEditor::timerCallback()
     patBox.setSelectedItemIndex (proc.currentPattern(), juce::dontSendNotification);
 }
 
+bool HKR5AudioProcessorEditor::onGridKey (const juce::KeyPress& k)
+{
+    const bool cmd = k.getModifiers().isCommandDown();
+    if (cmd && k.getKeyCode() == 'Z')
+    {
+        proc.undoGrid();
+        refreshGrid();
+        return true;
+    }
+    if (cmd && k.getKeyCode() == 'C')
+    {
+        proc.copyPattern();
+        return true;
+    }
+    if (cmd && k.getKeyCode() == 'V')
+    {
+        if (proc.pastePattern())
+            refreshGrid();
+        return true;
+    }
+    return false;
+}
+
+void HKR5AudioProcessorEditor::showLaneMenu (int lane)
+{
+    juce::PopupMenu m;
+    m.addItem (1, "Copy lane");
+    m.addItem (2, "Paste lane", true);
+    m.addSeparator();
+    m.addItem (3, "Random lane");
+    m.addItem (4, "Euclidean");
+    m.showMenuAsync (juce::PopupMenu::Options(), [this, lane] (int r)
+    {
+        if (r == 1)
+            proc.copyLane (lane);
+        else if (r == 2)
+            proc.pasteLane (lane);
+        else if (r == 3)
+            proc.randomizeLane (lane);
+        else if (r == 4)
+            proc.euclideanLane (lane);
+        if (r >= 2)
+            refreshGrid();
+    });
+}
+
 void HKR5AudioProcessorEditor::refreshGrid()
 {
     const auto slot = proc.currentSlot();
@@ -1094,6 +1193,19 @@ void HKR5AudioProcessorEditor::applyPageVisibility()
     pageLabel.setVisible (true);
     randomBtn.setVisible (true);
     clearBtn.setVisible (true);
+    copyBtn.setVisible (true);
+    pasteBtn.setVisible (true);
+    fillBtn.setVisible (true);
+    if (proc.fillHeld())
+    {
+        fillBtn.setColour (juce::TextButton::buttonColourId, kMagenta);
+        fillBtn.setColour (juce::TextButton::textColourOffId, kWhite);
+    }
+    else
+    {
+        fillBtn.removeColour (juce::TextButton::buttonColourId);
+        fillBtn.removeColour (juce::TextButton::textColourOffId);
+    }
     playBtn.setVisible (proc.wrapperType == juce::AudioProcessor::wrapperType_Standalone);
     if (proc.isTestRun())
     {
