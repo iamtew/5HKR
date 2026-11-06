@@ -18,7 +18,7 @@ A percussion overlay: eight tiny analog-ish synth lanes on a 16th grid, with ban
 - Patch + bank library (`.5hkrp` / `.5hkrb`)
 - Editor pages: Main, Mixer, Effects, EQ, Sidechain
 - Per-lane mixer: Gain, High/Mid/Low, DJ filter, pan, mute, solo, fader
-- Per-lane FX send into a global delay / reverb / chorus / flanger / phaser chain
+- Per-lane FX send into a global chorus / delay / flanger / phaser / reverb / compressor / distortion / insert-EQ / filter chain
 - Post-effects 5-band parametric EQ
 - VST3 + Standalone
 - Magenta / cyan chassis, logo, MIT
@@ -27,4 +27,3 @@ A percussion overlay: eight tiny analog-ish synth lanes on a 16th grid, with ban
 
 - Sample library, streaming, multi-sample instruments
 - MIDI out of the sequence
-- Comp / dist / filter / insert-EQ inside the FX rack
