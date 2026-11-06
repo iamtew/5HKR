@@ -40,7 +40,7 @@ struct FxChain
         revPreDly.reset();
         insertEq.prepare (sampleRate, samplesPerBlock, ch);
         scratch.setSize (ch, n);
-        cmpEnv = 0.f;
+        cmpGr = 0.f;
         cmpHpZ[0] = cmpHpZ[1] = 0.f;
         dlyHpZ[0] = dlyHpZ[1] = 0.f;
         dstLpZ[0] = dstLpZ[1] = 0.f;
@@ -225,23 +225,23 @@ private:
         const float atkA = 1.f - std::exp (-1.f / juce::jmax (1.f, atkMs * 0.001f * (float) sr));
         const float relA = 1.f - std::exp (-1.f / juce::jmax (1.f, relMs * 0.001f * (float) sr));
         const int n = buffer.getNumSamples();
-        const int chs = buffer.getNumChannels();
+        const int detChs = juce::jmin (2, buffer.getNumChannels());
         float peakGr = 0.f;
         for (int i = 0; i < n; ++i)
         {
             float det = 0.f;
-            for (int ch = 0; ch < chs; ++ch)
+            for (int ch = 0; ch < detChs; ++ch)
             {
                 const float x = buffer.getSample (ch, i);
                 det = juce::jmax (det, std::abs (hp1 (x, cmpHpZ[ch], hpA)));
             }
-            const float coeff = det > cmpEnv ? atkA : relA;
-            cmpEnv += coeff * (det - cmpEnv);
-            const float envDb = 20.f * std::log10 (cmpEnv + 1.0e-8f);
-            const float gr = fxCompGrDb (envDb, thr, ratio, knee);
-            peakGr = juce::jmax (peakGr, gr);
-            const float g = std::pow (10.f, -gr / 20.f) * makeup;
-            for (int ch = 0; ch < chs; ++ch)
+            const float envDb = 20.f * std::log10 (det + 1.0e-8f);
+            const float instant = fxCompGrDb (envDb, thr, ratio, knee);
+            const float coeff = instant > cmpGr ? atkA : relA;
+            cmpGr += coeff * (instant - cmpGr);
+            peakGr = juce::jmax (peakGr, cmpGr);
+            const float g = std::pow (10.f, -cmpGr / 20.f) * makeup;
+            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
             {
                 const float dry = buffer.getSample (ch, i);
                 buffer.setSample (ch, i, dry * g);
@@ -455,7 +455,7 @@ private:
     Df1 lpL, lpR;
     double sr = 44100.0;
     bool prepared = false;
-    float cmpEnv = 0.f;
+    float cmpGr = 0.f;
     float cmpHpZ[2] {};
     float dlyHpZ[2] {};
     float dstLpZ[2] {};

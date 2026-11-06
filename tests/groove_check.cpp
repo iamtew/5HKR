@@ -498,6 +498,10 @@ int main()
         assert (def[0] == 0 && def[1] == 5 && def[2] == 1 && def[8] == 4);
         assert (std::abs (fxCompGrDb (0.f, -12.f, 4.f, 0.f) - 9.f) < 0.01f);
         assert (fxCompGrDb (-20.f, -12.f, 4.f, 0.f) == 0.f);
+        assert (fxCompGrDb (-6.f, -12.f, 1.f, 0.f) == 0.f);
+        assert (fxCompGrDb (-6.f, -12.f, 4.f, 0.f) > 4.f);
+        const float knee = fxCompGrDb (-12.f, -12.f, 4.f, 6.f);
+        assert (knee > 0.f && knee < 2.f);
 
         float pL = 0.f, pR = 0.f;
         delayPingPush (false, 1.f, 2.f, 3.f, 4.f, 0.5f, pL, pR);
