@@ -1028,6 +1028,8 @@ void HKR5AudioProcessor::setStateInformation (const void* data, int sizeInBytes)
         {
             migrateFourKits (*xml);
             uiScale = juce::jlimit (0.4f, 1.5f, (float) xml->getDoubleAttribute ("uiScale", uiScale));
+            if (std::abs (uiScale - 0.85f) < 0.001f)
+                uiScale = 1.f;
             xml->removeAttribute ("uiScale");
             apvts.replaceState (juce::ValueTree::fromXml (*xml));
             loadBanksFromState();

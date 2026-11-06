@@ -7,7 +7,7 @@
 
 namespace
 {
-constexpr int kEditorW = 980;
+constexpr int kEditorW = 1120;
 constexpr int kEditorH = 560;
 constexpr const char* kPageNames[] = { "Main", "Mixer", "Effects", "EQ", "Sidechain" };
 constexpr int kPageCount = 5;
@@ -186,18 +186,19 @@ void HKR5AudioProcessorEditor::LaneRow::resized()
             c = {};
         return;
     }
-    auto ms = r.removeFromRight (44);
-    mute.setBounds (ms.removeFromLeft (ms.getWidth() / 2).reduced (1, 4));
-    solo.setBounds (ms.reduced (1, 4));
+    const int side = juce::jmax (1, r.getHeight() - 4);
+    auto ms = r.removeFromRight (side * 2);
+    mute.setBounds (ms.removeFromLeft (side).reduced (1));
+    solo.setBounds (ms.removeFromLeft (side).reduced (1));
     auto place = [] (juce::Slider& s, juce::Label& lab, juce::Rectangle<int> col)
     {
         lab.setBounds (col.removeFromBottom (12));
         s.setBounds (col.reduced (1));
     };
-    place (tune, tuneLabel, r.removeFromLeft (48));
-    place (swing, swingLabel, r.removeFromLeft (48));
-    place (send, sendLabel, r.removeFromLeft (48));
-    place (prob, probLabel, r.removeFromLeft (48));
+    place (tune, tuneLabel, r.removeFromLeft (58));
+    place (swing, swingLabel, r.removeFromLeft (58));
+    place (send, sendLabel, r.removeFromLeft (58));
+    place (prob, probLabel, r.removeFromLeft (58));
     const int cellW = juce::jmax (1, r.getWidth() / 16);
     for (int i = 0; i < 16; ++i)
         cells[i] = { r.getX() + i * cellW, r.getY() + 4, cellW - 2, r.getHeight() - 8 };

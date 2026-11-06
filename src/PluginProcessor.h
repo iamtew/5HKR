@@ -118,7 +118,7 @@ public:
     bool importPatch (const juce::File& src);
     bool importBank (const juce::File& src);
 
-    float uiScale = 0.85f;
+    float uiScale = 1.f;
 
 private:
     void parameterChanged (const juce::String& parameterID, float newValue) override;
