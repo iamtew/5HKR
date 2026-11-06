@@ -90,7 +90,10 @@ private:
     bool prepared = false;
 };
 
-inline void readEqBands (juce::AudioProcessorValueTreeState& apvts, EqBandParam out[eqBandCount])
+inline void readEqBands (juce::AudioProcessorValueTreeState& apvts,
+                         const char* const* types, const char* const* freqs,
+                         const char* const* gains, const char* const* qs,
+                         EqBandParam out[eqBandCount])
 {
     auto load = [&] (const char* id) -> float
     {
@@ -99,11 +102,17 @@ inline void readEqBands (juce::AudioProcessorValueTreeState& apvts, EqBandParam 
     };
     for (int i = 0; i < eqBandCount; ++i)
     {
-        out[i].type = juce::roundToInt (load (ParamID::postEqType[i]));
-        out[i].hz = load (ParamID::postEqFreq[i]);
-        out[i].gainDb = load (ParamID::postEqGain[i]);
-        out[i].q = load (ParamID::postEqQ[i]);
+        out[i].type = juce::roundToInt (load (types[i]));
+        out[i].hz = load (freqs[i]);
+        out[i].gainDb = load (gains[i]);
+        out[i].q = load (qs[i]);
     }
+}
+
+inline void readEqBands (juce::AudioProcessorValueTreeState& apvts, EqBandParam out[eqBandCount])
+{
+    readEqBands (apvts, ParamID::postEqType, ParamID::postEqFreq,
+                 ParamID::postEqGain, ParamID::postEqQ, out);
 }
 
 inline bool postEqEnabled (juce::AudioProcessorValueTreeState& apvts)

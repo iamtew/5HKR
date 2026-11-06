@@ -94,6 +94,7 @@ public:
     hkr::OutputMeter& outputMeter() { return meter; }
     hkr::EqAnalyser& eqAnalyser() { return analyser; }
     hkr::EqAnalyser& scAnalyser() { return scSpec; }
+    float fxCompGrDb() const { return fx.gainReductionDb(); }
 
     void getFxOrder (int* types, int& n) const;
     void setFxEnabled (int type, bool on);
