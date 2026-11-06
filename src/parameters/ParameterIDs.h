@@ -123,18 +123,22 @@ inline constexpr const char* laneFader[hkr::numLanes] = {
     "laneFader4", "laneFader5", "laneFader6", "laneFader7"
 };
 
-inline constexpr int fxCount = 5;
+inline constexpr int fxCount = 9;
 inline constexpr const char* fxNames[fxCount] = {
-    "Chorus", "Delay", "Flanger", "Phaser", "Reverb"
+    "Chorus", "Delay", "Flanger", "Phaser", "Reverb",
+    "Compressor", "Distortion", "Equalizer", "Filter"
 };
 inline constexpr const char* fxOnIds[fxCount] = {
-    "fxChoOn", "fxDlyOn", "fxFlaOn", "fxPhaOn", "fxRevOn"
+    "fxChoOn", "fxDlyOn", "fxFlaOn", "fxPhaOn", "fxRevOn",
+    "fxCmpOn", "fxDstOn", "fxEqOn", "fxFltOn"
 };
 
 inline constexpr const char* fxChoRate = "fxChoRate";
 inline constexpr const char* fxChoDepth = "fxChoDepth";
 inline constexpr const char* fxChoWidth = "fxChoWidth";
 inline constexpr const char* fxChoFb = "fxChoFb";
+inline constexpr const char* fxChoMix = "fxChoMix";
+inline constexpr const char* fxChoCentre = "fxChoCentre";
 
 inline constexpr const char* fxDlyTime = "fxDlyTime";
 inline constexpr const char* fxDlyFb = "fxDlyFb";
@@ -142,24 +146,70 @@ inline constexpr const char* fxDlyCut = "fxDlyCut";
 inline constexpr const char* fxDlySync = "fxDlySync";
 inline constexpr const char* fxDlyDiv = "fxDlyDiv";
 inline constexpr const char* fxDlyPing = "fxDlyPing";
+inline constexpr const char* fxDlyMix = "fxDlyMix";
+inline constexpr const char* fxDlyHp = "fxDlyHp";
+inline constexpr const char* fxDlySpread = "fxDlySpread";
 
 inline constexpr const char* fxFlaRate = "fxFlaRate";
 inline constexpr const char* fxFlaDepth = "fxFlaDepth";
 inline constexpr const char* fxFlaFb = "fxFlaFb";
 inline constexpr const char* fxFlaDelay = "fxFlaDelay";
+inline constexpr const char* fxFlaMix = "fxFlaMix";
+inline constexpr const char* fxFlaWidth = "fxFlaWidth";
 
 inline constexpr const char* fxPhaRate = "fxPhaRate";
 inline constexpr const char* fxPhaDepth = "fxPhaDepth";
 inline constexpr const char* fxPhaFb = "fxPhaFb";
 inline constexpr const char* fxPhaCentre = "fxPhaCentre";
 inline constexpr const char* fxPhaSpread = "fxPhaSpread";
+inline constexpr const char* fxPhaMix = "fxPhaMix";
+inline constexpr const char* fxPhaStages = "fxPhaStages";
 
 inline constexpr const char* fxRevSize = "fxRevSize";
 inline constexpr const char* fxRevDamp = "fxRevDamp";
 inline constexpr const char* fxRevWidth = "fxRevWidth";
 inline constexpr const char* fxRevPre = "fxRevPre";
+inline constexpr const char* fxRevMix = "fxRevMix";
+inline constexpr const char* fxRevFreeze = "fxRevFreeze";
+inline constexpr const char* fxRevLo = "fxRevLo";
+
+inline constexpr const char* fxCmpThr = "fxCmpThr";
+inline constexpr const char* fxCmpRat = "fxCmpRat";
+inline constexpr const char* fxCmpAtk = "fxCmpAtk";
+inline constexpr const char* fxCmpRel = "fxCmpRel";
+inline constexpr const char* fxCmpMix = "fxCmpMix";
+inline constexpr const char* fxCmpMake = "fxCmpMake";
+inline constexpr const char* fxCmpKnee = "fxCmpKnee";
+inline constexpr const char* fxCmpHpf = "fxCmpHpf";
+
+inline constexpr const char* fxDstDrive = "fxDstDrive";
+inline constexpr const char* fxDstMix = "fxDstMix";
+inline constexpr const char* fxDstType = "fxDstType";
+inline constexpr const char* fxDstTone = "fxDstTone";
+inline constexpr const char* fxDstBias = "fxDstBias";
+
+inline constexpr const char* fxFltCut = "fxFltCut";
+inline constexpr const char* fxFltRes = "fxFltRes";
+inline constexpr const char* fxFltMix = "fxFltMix";
+inline constexpr const char* fxFltType = "fxFltType";
+inline constexpr const char* fxFltDrive = "fxFltDrive";
+inline constexpr const char* fxFltSlope = "fxFltSlope";
 
 inline constexpr int eqBandCount = 5;
+inline constexpr const char* fxEqType[eqBandCount] = {
+    "fxEq1Type", "fxEq2Type", "fxEq3Type", "fxEq4Type", "fxEq5Type"
+};
+inline constexpr const char* fxEqFreq[eqBandCount] = {
+    "fxEq1Freq", "fxEq2Freq", "fxEq3Freq", "fxEq4Freq", "fxEq5Freq"
+};
+inline constexpr const char* fxEqGain[eqBandCount] = {
+    "fxEq1Gain", "fxEq2Gain", "fxEq3Gain", "fxEq4Gain", "fxEq5Gain"
+};
+inline constexpr const char* fxEqQ[eqBandCount] = {
+    "fxEq1Q", "fxEq2Q", "fxEq3Q", "fxEq4Q", "fxEq5Q"
+};
+inline constexpr const char* fxEqTrim = "fxEqTrim";
+
 inline constexpr const char* postEqOn = "postEqOn";
 inline constexpr const char* postEqType[eqBandCount] = {
     "postEq1Type", "postEq2Type", "postEq3Type", "postEq4Type", "postEq5Type"
@@ -184,8 +234,9 @@ inline int fillDefaultFxOrder (int* types)
 {
     if (types == nullptr)
         return 0;
+    static constexpr int kDef[fxCount] = { 0, 5, 1, 6, 7, 8, 2, 3, 4 };
     for (int i = 0; i < fxCount; ++i)
-        types[i] = i;
+        types[i] = kDef[i];
     return fxCount;
 }
 
@@ -307,6 +358,23 @@ inline float fxPreDelaySamples (float ms, float sr, float maxSamp)
     if (s > maxSamp)
         s = maxSamp;
     return s;
+}
+
+inline float fxCompGrDb (float envDb, float thr, float ratio, float knee)
+{
+    const float r = ratio < 1.f ? 1.f : ratio;
+    const float half = knee * 0.5f;
+    const float over = envDb - thr;
+    if (knee <= 0.05f)
+        return over > 0.f ? over * (1.f - 1.f / r) : 0.f;
+    if (over > half)
+        return over * (1.f - 1.f / r);
+    if (over > -half)
+    {
+        const float t = over + half;
+        return (1.f - 1.f / r) * t * t / (2.f * knee);
+    }
+    return 0.f;
 }
 
 } // namespace hkr
