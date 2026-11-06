@@ -12,6 +12,7 @@ class EffectsPage : public juce::Component,
 {
 public:
     static constexpr int kRailW = 124;
+    static constexpr int kSendW = 72;
     static constexpr int kGripW = 14;
     static constexpr int kVizH = 260;
     static constexpr int kKnobRowH = 118;
@@ -33,6 +34,11 @@ public:
         }
         for (auto* rail : rails)
             rail->bindClick();
+        for (int ln = 0; ln < hkr::numLanes; ++ln)
+        {
+            auto* slot = sends.add (new SendSlot (p, ln));
+            addAndMakeVisible (slot);
+        }
         refresh();
         startTimerHz (24);
     }
@@ -43,10 +49,13 @@ public:
     {
         auto body = getLocalBounds();
         auto rail = body.removeFromLeft (kRailW);
+        auto send = body.removeFromRight (kSendW);
         g.setColour (kLane);
         g.fillRoundedRectangle (rail.toFloat(), 4.f);
+        g.fillRoundedRectangle (send.toFloat(), 4.f);
         g.setColour (kCyan.withAlpha (0.35f));
         g.drawRoundedRectangle (rail.toFloat().reduced (0.5f), 4.f, 1.f);
+        g.drawRoundedRectangle (send.toFloat().reduced (0.5f), 4.f, 1.f);
 
         if (selected < 0)
         {
@@ -73,8 +82,10 @@ public:
     {
         auto r = getLocalBounds();
         railArea = r.removeFromLeft (kRailW);
+        sendArea = r.removeFromRight (kSendW);
         viewport.setBounds (r);
         layoutRail();
+        layoutSends();
         layoutDetail();
     }
 
@@ -1056,6 +1067,51 @@ private:
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> onAtt;
     };
 
+    struct SendSlot : public juce::Component
+    {
+        SendSlot (HKR5AudioProcessor& p, int ln)
+        {
+            name.setText (hkr::laneNames[ln], juce::dontSendNotification);
+            name.setJustificationType (juce::Justification::centred);
+            name.setColour (juce::Label::textColourId, kCyan);
+            name.setFont (labelFont (11.f));
+            name.setInterceptsMouseClicks (false, false);
+            addAndMakeVisible (name);
+
+            send.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+            send.setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
+            addAndMakeVisible (send);
+            sendAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+                p.apvts, ParamID::laneSend[ln], send);
+
+            fxLabel.setJustificationType (juce::Justification::centred);
+            fxLabel.setColour (juce::Label::textColourId, kCyan);
+            fxLabel.setFont (labelFont (9.f));
+            addAndMakeVisible (fxLabel);
+            send.onValueChange = [this] { refreshLabel(); };
+            refreshLabel();
+        }
+
+        void refreshLabel()
+        {
+            fxLabel.setText ("FX " + juce::String (juce::roundToInt ((float) send.getValue() * 100.f)) + "%",
+                             juce::dontSendNotification);
+        }
+
+        void resized() override
+        {
+            auto r = getLocalBounds().reduced (2, 1);
+            name.setBounds (r.removeFromTop (14));
+            fxLabel.setBounds (r.removeFromBottom (12));
+            send.setBounds (r.reduced (1));
+        }
+
+        juce::Label name;
+        juce::Slider send;
+        juce::Label fxLabel;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sendAtt;
+    };
+
     void layoutRail()
     {
         auto rail = railArea;
@@ -1064,6 +1120,16 @@ private:
         for (int i = 0; i < nRail; ++i)
             rails[railOrder[i]]->setBounds (rail.removeFromTop (i == nRail - 1 ? rail.getHeight() : h)
                                                 .reduced (3, 2));
+    }
+
+    void layoutSends()
+    {
+        auto rail = sendArea;
+        const int n = hkr::numLanes;
+        const int h = juce::jmax (1, rail.getHeight() / n);
+        for (int i = 0; i < n; ++i)
+            sends[i]->setBounds (rail.removeFromTop (i == n - 1 ? rail.getHeight() : h)
+                                     .reduced (2, 1));
     }
 
     void layoutDetail()
@@ -1088,7 +1154,9 @@ private:
     juce::Component stack;
     juce::OwnedArray<RailButton> rails;
     juce::OwnedArray<FxRow> rows;
+    juce::OwnedArray<SendSlot> sends;
     juce::Rectangle<int> railArea;
+    juce::Rectangle<int> sendArea;
     juce::Image logo;
     int railOrder[hkr::fxCount] {};
     int nRail = 0;
