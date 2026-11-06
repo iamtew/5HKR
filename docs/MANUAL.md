@@ -60,7 +60,7 @@ Ducks the mixed lanes from the plugin audio input. **Sidechain** is off until yo
 
 ## Effects
 
-Click a name in the left rail to select it; **On** adds it to the send chain. Drag the grip to reorder. The right rail is the same lane **FX** sends as Main (dry/wet into the chain). Mix on an effect is wetness *inside* that send. Chorus, Delay, Flanger, Phaser, Reverb, Compressor, Distortion, Equalizer, Filter. Delay: Sync, Div or Time, Fb, Cut, Mix, Ping, HP, Spread. Insert Equalizer is on the send, not the post-EQ page.
+Click a name in the left rail to select it; **On** adds it to the send chain. Drag the grip to reorder. The right rail is the same lane **FX** sends as Main (dry/wet into the chain). Chorus, Delay, Flanger, Phaser, Reverb, Compressor, Distortion, Equalizer, Filter. Delay: Sync, Div or Time, Fb, Cut, Ping, HP, Spread. Insert Equalizer is on the send, not the post-EQ page.
 
 ## EQ
 

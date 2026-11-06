@@ -181,7 +181,6 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
     addUnit (ParamID::fxChoDepth, "Chorus Depth", 0.4f);
     addUnit (ParamID::fxChoWidth, "Chorus Width", 0.4f);
     addUnit (ParamID::fxChoFb, "Chorus Fb", 0.1f);
-    addUnit (ParamID::fxChoMix, "Chorus Mix", 1.f);
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamID::fxChoCentre, 1 }, "Chorus Centre",
         NormalisableRange<float> (1.f, 20.f, 0.01f), 7.5f, ms1));
@@ -197,7 +196,6 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         StringArray { "1/16", "1/8", "1/4", "1/2" }, 1));
     layout.add (std::make_unique<AudioParameterBool> (
         ParameterID { ParamID::fxDlyPing, 1 }, "Delay Ping", false));
-    addUnit (ParamID::fxDlyMix, "Delay Mix", 1.f);
     addUnit (ParamID::fxDlyHp, "Delay HP", 0.15f);
     addUnit (ParamID::fxDlySpread, "Delay Spread", 0.1f);
 
@@ -208,7 +206,6 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamID::fxFlaDelay, 1 }, "Flanger Delay",
         NormalisableRange<float> (0.4f, 4.f, 0.01f), 1.6f, ms1));
-    addUnit (ParamID::fxFlaMix, "Flanger Mix", 1.f);
     addUnit (ParamID::fxFlaWidth, "Flanger Width", 0.2f);
 
     addOn (ParamID::fxOnIds[3], "Phaser On");
@@ -219,7 +216,6 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         ParameterID { ParamID::fxPhaCentre, 1 }, "Phaser Centre",
         NormalisableRange<float> (200.f, 4000.f, 0.01f, 0.3f), 1300.f, hz0));
     addUnit (ParamID::fxPhaSpread, "Phaser Spread", 0.3f);
-    addUnit (ParamID::fxPhaMix, "Phaser Mix", 1.f);
     layout.add (std::make_unique<AudioParameterChoice> (
         ParameterID { ParamID::fxPhaStages, 1 }, "Phaser Stages",
         StringArray { "2", "4", "6", "8" }, 2));
@@ -231,7 +227,6 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamID::fxRevPre, 1 }, "Reverb Pre",
         NormalisableRange<float> (0.f, 80.f, 0.1f), 0.f, ms1));
-    addUnit (ParamID::fxRevMix, "Reverb Mix", 1.f);
     layout.add (std::make_unique<AudioParameterBool> (
         ParameterID { ParamID::fxRevFreeze, 1 }, "Reverb Freeze", false));
     addUnit (ParamID::fxRevLo, "Reverb Lo Cut", 0.2f);
@@ -249,7 +244,6 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamID::fxCmpRel, 1 }, "Comp Release",
         NormalisableRange<float> (10.f, 500.f, 0.1f, 0.4f), 80.f, ms1));
-    addUnit (ParamID::fxCmpMix, "Comp Mix", 1.f);
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamID::fxCmpMake, 1 }, "Comp Makeup",
         NormalisableRange<float> (-6.f, 24.f), 0.f, db1));
@@ -262,7 +256,6 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 
     addOn (ParamID::fxOnIds[6], "Dist On");
     addUnit (ParamID::fxDstDrive, "Dist Drive", 0.4f);
-    addUnit (ParamID::fxDstMix, "Dist Mix", 0.5f);
     layout.add (std::make_unique<AudioParameterChoice> (
         ParameterID { ParamID::fxDstType, 1 }, "Dist Type",
         StringArray { "Soft", "Hard", "Fold", "Rectify" }, 0));
@@ -281,7 +274,6 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         ParameterID { ParamID::fxFltCut, 1 }, "FX Cutoff",
         NormalisableRange<float> (20.f, 12000.f, 0.01f, 0.3f), 2000.f, hz0));
     addUnit (ParamID::fxFltRes, "FX Res", 0.2f);
-    addUnit (ParamID::fxFltMix, "FX Filt Mix", 1.f);
     layout.add (std::make_unique<AudioParameterChoice> (
         ParameterID { ParamID::fxFltType, 1 }, "FX Filt Type",
         StringArray { "Low", "Band", "High" }, 0));

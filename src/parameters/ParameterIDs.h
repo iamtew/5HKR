@@ -137,7 +137,6 @@ inline constexpr const char* fxChoRate = "fxChoRate";
 inline constexpr const char* fxChoDepth = "fxChoDepth";
 inline constexpr const char* fxChoWidth = "fxChoWidth";
 inline constexpr const char* fxChoFb = "fxChoFb";
-inline constexpr const char* fxChoMix = "fxChoMix";
 inline constexpr const char* fxChoCentre = "fxChoCentre";
 
 inline constexpr const char* fxDlyTime = "fxDlyTime";
@@ -146,7 +145,6 @@ inline constexpr const char* fxDlyCut = "fxDlyCut";
 inline constexpr const char* fxDlySync = "fxDlySync";
 inline constexpr const char* fxDlyDiv = "fxDlyDiv";
 inline constexpr const char* fxDlyPing = "fxDlyPing";
-inline constexpr const char* fxDlyMix = "fxDlyMix";
 inline constexpr const char* fxDlyHp = "fxDlyHp";
 inline constexpr const char* fxDlySpread = "fxDlySpread";
 
@@ -154,7 +152,6 @@ inline constexpr const char* fxFlaRate = "fxFlaRate";
 inline constexpr const char* fxFlaDepth = "fxFlaDepth";
 inline constexpr const char* fxFlaFb = "fxFlaFb";
 inline constexpr const char* fxFlaDelay = "fxFlaDelay";
-inline constexpr const char* fxFlaMix = "fxFlaMix";
 inline constexpr const char* fxFlaWidth = "fxFlaWidth";
 
 inline constexpr const char* fxPhaRate = "fxPhaRate";
@@ -162,14 +159,12 @@ inline constexpr const char* fxPhaDepth = "fxPhaDepth";
 inline constexpr const char* fxPhaFb = "fxPhaFb";
 inline constexpr const char* fxPhaCentre = "fxPhaCentre";
 inline constexpr const char* fxPhaSpread = "fxPhaSpread";
-inline constexpr const char* fxPhaMix = "fxPhaMix";
 inline constexpr const char* fxPhaStages = "fxPhaStages";
 
 inline constexpr const char* fxRevSize = "fxRevSize";
 inline constexpr const char* fxRevDamp = "fxRevDamp";
 inline constexpr const char* fxRevWidth = "fxRevWidth";
 inline constexpr const char* fxRevPre = "fxRevPre";
-inline constexpr const char* fxRevMix = "fxRevMix";
 inline constexpr const char* fxRevFreeze = "fxRevFreeze";
 inline constexpr const char* fxRevLo = "fxRevLo";
 
@@ -177,20 +172,17 @@ inline constexpr const char* fxCmpThr = "fxCmpThr";
 inline constexpr const char* fxCmpRat = "fxCmpRat";
 inline constexpr const char* fxCmpAtk = "fxCmpAtk";
 inline constexpr const char* fxCmpRel = "fxCmpRel";
-inline constexpr const char* fxCmpMix = "fxCmpMix";
 inline constexpr const char* fxCmpMake = "fxCmpMake";
 inline constexpr const char* fxCmpKnee = "fxCmpKnee";
 inline constexpr const char* fxCmpHpf = "fxCmpHpf";
 
 inline constexpr const char* fxDstDrive = "fxDstDrive";
-inline constexpr const char* fxDstMix = "fxDstMix";
 inline constexpr const char* fxDstType = "fxDstType";
 inline constexpr const char* fxDstTone = "fxDstTone";
 inline constexpr const char* fxDstBias = "fxDstBias";
 
 inline constexpr const char* fxFltCut = "fxFltCut";
 inline constexpr const char* fxFltRes = "fxFltRes";
-inline constexpr const char* fxFltMix = "fxFltMix";
 inline constexpr const char* fxFltType = "fxFltType";
 inline constexpr const char* fxFltDrive = "fxFltDrive";
 inline constexpr const char* fxFltSlope = "fxFltSlope";

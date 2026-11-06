@@ -162,7 +162,7 @@ private:
                 chorus.setRate (0.05f + p (apvts, ParamID::fxChoRate) * 7.95f);
                 chorus.setDepth (p (apvts, ParamID::fxChoDepth));
                 chorus.setFeedback (p (apvts, ParamID::fxChoFb) * 0.9f);
-                chorus.setMix (p (apvts, ParamID::fxChoMix));
+                chorus.setMix (1.f);
                 chorus.setCentreDelay (p (apvts, ParamID::fxChoCentre));
                 chorus.process (ctx);
                 applyRDelay (buffer, choWidthDly, p (apvts, ParamID::fxChoWidth) * 12.f);
@@ -176,7 +176,7 @@ private:
                 flanger.setRate (0.05f + p (apvts, ParamID::fxFlaRate) * 4.95f);
                 flanger.setDepth (p (apvts, ParamID::fxFlaDepth));
                 flanger.setFeedback (p (apvts, ParamID::fxFlaFb) * 0.9f);
-                flanger.setMix (p (apvts, ParamID::fxFlaMix));
+                flanger.setMix (1.f);
                 flanger.setCentreDelay (p (apvts, ParamID::fxFlaDelay));
                 flanger.process (ctx);
                 applyRDelay (buffer, flaWidthDly, p (apvts, ParamID::fxFlaWidth) * 8.f);
@@ -219,7 +219,6 @@ private:
         const float ratio = juce::jmax (1.f, p (apvts, ParamID::fxCmpRat));
         const float atkMs = p (apvts, ParamID::fxCmpAtk);
         const float relMs = p (apvts, ParamID::fxCmpRel);
-        const float mix = p (apvts, ParamID::fxCmpMix);
         const float makeup = std::pow (10.f, p (apvts, ParamID::fxCmpMake) / 20.f);
         const float knee = p (apvts, ParamID::fxCmpKnee);
         const float hpA = onePoleCoeff (p (apvts, ParamID::fxCmpHpf), sr);
@@ -245,7 +244,7 @@ private:
             for (int ch = 0; ch < chs; ++ch)
             {
                 const float dry = buffer.getSample (ch, i);
-                buffer.setSample (ch, i, dry + mix * (dry * g - dry));
+                buffer.setSample (ch, i, dry * g);
             }
         }
         grDb.store (peakGr, std::memory_order_relaxed);
@@ -254,7 +253,6 @@ private:
     void processDist (juce::AudioBuffer<float>& buffer, juce::AudioProcessorValueTreeState& apvts)
     {
         const float drive = 1.f + p (apvts, ParamID::fxDstDrive) * 12.f;
-        const float mix = p (apvts, ParamID::fxDstMix);
         const int kind = juce::roundToInt (p (apvts, ParamID::fxDstType));
         const float bias = p (apvts, ParamID::fxDstBias) * 0.5f;
         const float toneHz = 400.f + p (apvts, ParamID::fxDstTone) * 11600.f;
@@ -267,8 +265,7 @@ private:
             {
                 const float dry = buffer.getSample (ch, i);
                 float wet = shapeDist ((dry + bias) * drive, kind);
-                wet = lp1 (wet, dstLpZ[ch], a);
-                buffer.setSample (ch, i, dry + mix * (wet - dry));
+                buffer.setSample (ch, i, lp1 (wet, dstLpZ[ch], a));
             }
         }
     }
@@ -288,13 +285,8 @@ private:
         svf2.setCutoffFrequency (cut);
         svf.setResonance (res);
         svf2.setResonance (res);
-        const float mix = p (apvts, ParamID::fxFltMix);
         const float drive = p (apvts, ParamID::fxFltDrive);
         const bool steep = juce::roundToInt (p (apvts, ParamID::fxFltSlope)) >= 1;
-        if (! scratchFits (buffer))
-            return;
-        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-            scratch.copyFrom (ch, 0, buffer, ch, 0, buffer.getNumSamples());
         if (drive > 0.001f)
         {
             const float amt = 1.f + drive * 8.f;
@@ -308,16 +300,6 @@ private:
         svf.process (ctx);
         if (steep)
             svf2.process (ctx);
-        if (mix < 0.999f)
-        {
-            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-            {
-                auto* wet = buffer.getWritePointer (ch);
-                const auto* dry = scratch.getReadPointer (ch);
-                for (int i = 0; i < buffer.getNumSamples(); ++i)
-                    wet[i] = dry[i] + mix * (wet[i] - dry[i]);
-            }
-        }
     }
 
     static float allpass (float x, float a, float& z)
@@ -332,7 +314,6 @@ private:
         const float rate = 0.05f + p (apvts, ParamID::fxPhaRate) * 7.95f;
         const float depth = p (apvts, ParamID::fxPhaDepth);
         const float fb = p (apvts, ParamID::fxPhaFb) * 0.85f;
-        const float mix = p (apvts, ParamID::fxPhaMix);
         const float centre = p (apvts, ParamID::fxPhaCentre);
         const int stages = 2 * (juce::jlimit (0, 3, juce::roundToInt (p (apvts, ParamID::fxPhaStages))) + 1);
         const float dPhase = rate / (float) sr;
@@ -356,14 +337,13 @@ private:
                 for (int s = 0; s < stages; ++s)
                     x = allpass (x, a, z[s]);
                 phaFbZ[ch] = x;
-                buffer.setSample (ch, i, dry + mix * (x - dry));
+                buffer.setSample (ch, i, x);
             }
         }
     }
 
     void processReverb (juce::AudioBuffer<float>& buffer, juce::AudioProcessorValueTreeState& apvts)
     {
-        const float mix = p (apvts, ParamID::fxRevMix);
         const float preMs = p (apvts, ParamID::fxRevPre);
         const bool freeze = p (apvts, ParamID::fxRevFreeze) >= 0.5f;
         const float loA = onePoleCoeff (20.f + p (apvts, ParamID::fxRevLo) * 480.f, sr);
@@ -401,10 +381,7 @@ private:
             auto* dry = buffer.getWritePointer (ch);
             auto* wet = scratch.getWritePointer (ch);
             for (int i = 0; i < n; ++i)
-            {
-                wet[i] = hp1 (wet[i], revHpZ[ch], loA);
-                dry[i] += mix * (wet[i] - dry[i]);
-            }
+                dry[i] = hp1 (wet[i], revHpZ[ch], loA);
         }
     }
 
@@ -425,7 +402,6 @@ private:
         const float spread = p (apvts, ParamID::fxDlySpread) * delaySamp * 0.25f;
         const bool ping = p (apvts, ParamID::fxDlyPing) >= 0.5f;
         const float fb = p (apvts, ParamID::fxDlyFb) * 0.92f;
-        const float mix = p (apvts, ParamID::fxDlyMix);
         const float cut = 200.f + p (apvts, ParamID::fxDlyCut) * 9800.f;
         const Biquad coef = eqBiquad (eqTypeLP, (float) sr, cut, 0.7f, 0.f);
         const float hpA = onePoleCoeff (20.f + p (apvts, ParamID::fxDlyHp) * 1980.f, sr);
@@ -456,12 +432,7 @@ private:
             }
         }
         for (int ch = 0; ch < chs; ++ch)
-        {
-            auto* dry = buffer.getWritePointer (ch);
-            const auto* wet = scratch.getReadPointer (ch);
-            for (int i = 0; i < n; ++i)
-                dry[i] += mix * (wet[i] - dry[i]);
-        }
+            buffer.copyFrom (ch, 0, scratch, ch, 0, n);
     }
 
     bool scratchFits (const juce::AudioBuffer<float>& buffer) const

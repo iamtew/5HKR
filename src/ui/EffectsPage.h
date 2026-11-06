@@ -287,7 +287,6 @@ private:
                     add (ParamID::fxChoRate, "Rate");
                     add (ParamID::fxChoDepth, "Depth");
                     add (ParamID::fxChoFb, "Feedback");
-                    add (ParamID::fxChoMix, "Mix");
                     add (ParamID::fxChoCentre, "Centre");
                     add (ParamID::fxChoWidth, "Width");
                     break;
@@ -297,7 +296,6 @@ private:
                     add (ParamID::fxDlyTime, "Time");
                     add (ParamID::fxDlyFb, "Feedback");
                     add (ParamID::fxDlyCut, "Lowpass");
-                    add (ParamID::fxDlyMix, "Mix");
                     add (ParamID::fxDlyPing, "Ping");
                     add (ParamID::fxDlyHp, "Highpass");
                     add (ParamID::fxDlySpread, "Spread");
@@ -306,7 +304,6 @@ private:
                     add (ParamID::fxFlaRate, "Rate");
                     add (ParamID::fxFlaDepth, "Depth");
                     add (ParamID::fxFlaFb, "Feedback");
-                    add (ParamID::fxFlaMix, "Mix");
                     add (ParamID::fxFlaDelay, "Centre");
                     add (ParamID::fxFlaWidth, "Width");
                     break;
@@ -316,13 +313,11 @@ private:
                     add (ParamID::fxPhaFb, "Feedback");
                     add (ParamID::fxPhaCentre, "Centre");
                     add (ParamID::fxPhaStages, "Stages");
-                    add (ParamID::fxPhaMix, "Mix");
                     break;
                 case 4:
                     add (ParamID::fxRevSize, "Size");
                     add (ParamID::fxRevDamp, "Damping");
                     add (ParamID::fxRevWidth, "Width");
-                    add (ParamID::fxRevMix, "Mix");
                     add (ParamID::fxRevPre, "Predelay");
                     add (ParamID::fxRevFreeze, "Freeze");
                     add (ParamID::fxRevLo, "Low Cut");
@@ -332,7 +327,6 @@ private:
                     add (ParamID::fxCmpRat, "Ratio");
                     add (ParamID::fxCmpAtk, "Attack");
                     add (ParamID::fxCmpRel, "Release");
-                    add (ParamID::fxCmpMix, "Mix");
                     add (ParamID::fxCmpMake, "Makeup");
                     add (ParamID::fxCmpKnee, "Knee");
                     add (ParamID::fxCmpHpf, "Highpass");
@@ -342,7 +336,6 @@ private:
                     add (ParamID::fxDstDrive, "Drive");
                     add (ParamID::fxDstBias, "Bias");
                     add (ParamID::fxDstTone, "Tone");
-                    add (ParamID::fxDstMix, "Mix");
                     break;
                 case 7:
                     add (ParamID::fxEqType[0], "Type");
@@ -357,7 +350,6 @@ private:
                     add (ParamID::fxFltCut, "Cutoff");
                     add (ParamID::fxFltRes, "Resonance");
                     add (ParamID::fxFltDrive, "Drive");
-                    add (ParamID::fxFltMix, "Mix");
                     break;
                 default:
                     break;
