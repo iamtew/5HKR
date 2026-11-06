@@ -1,7 +1,9 @@
 #include "PluginEditor.h"
+#include "ui/VersionCompare.h"
 
 #include <algorithm>
 #include <cmath>
+#include <thread>
 
 namespace
 {
@@ -524,36 +526,126 @@ juce::Font HKR5AudioProcessorEditor::PanelLnF::getComboBoxFont (juce::ComboBox&)
 
 HKR5AudioProcessorEditor::AboutBox::AboutBox()
 {
-    closeBtn.setClickingTogglesState (false);
+    status.setJustificationType (juce::Justification::centred);
+    status.setColour (juce::Label::textColourId, kWhite);
+    status.setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+    addAndMakeVisible (status);
+
+    auto setupPlain = [] (juce::ToggleButton& b)
+    {
+        b.setClickingTogglesState (false);
+    };
+    setupPlain (checkBtn);
+    setupPlain (closeBtn);
+    checkBtn.onClick = [this] { checkForUpdate(); };
     closeBtn.onClick = [this] { setVisible (false); };
+    addAndMakeVisible (checkBtn);
     addAndMakeVisible (closeBtn);
+
+    releasesBtn.setColour (juce::HyperlinkButton::textColourId, kCyan);
+    releasesBtn.setVisible (false);
+    addAndMakeVisible (releasesBtn);
 }
 
 void HKR5AudioProcessorEditor::AboutBox::paint (juce::Graphics& g)
 {
     g.fillAll (kDark.withAlpha (0.65f));
-    auto card = getLocalBounds().withSizeKeepingCentre (320, 160).toFloat();
+    auto card = cardBounds().toFloat();
     g.setColour (kChassis);
     g.fillRoundedRectangle (card, 8.f);
     g.setColour (kMagenta);
     g.drawRoundedRectangle (card, 8.f, 2.f);
+
+    auto r = cardBounds().reduced (16, 14);
     g.setColour (kWhite);
     g.setFont (boldFont (18.f));
-    g.drawText ("5HKR  v" JucePlugin_VersionString, card.removeFromTop (48).toNearestInt(),
+    g.drawText ("5HKR  v" JucePlugin_VersionString, r.removeFromTop (26).toNearestInt(),
                 juce::Justification::centred);
     g.setFont (boldFont (13.f));
     g.setColour (kCyan);
-    g.drawText ("Stupid Systems LLC", card.removeFromTop (28).toNearestInt(),
+    g.drawText ("Stupid Systems LLC", r.removeFromTop (18).toNearestInt(),
                 juce::Justification::centred);
     g.setColour (kWhite.withAlpha (0.8f));
-    g.drawText ("Hold C1 for bank 1 pattern 1.", card.removeFromTop (24).toNearestInt(),
+    g.drawText ("Hold C1 for bank 1 pattern 1.", r.removeFromTop (16).toNearestInt(),
                 juce::Justification::centred);
 }
 
 void HKR5AudioProcessorEditor::AboutBox::resized()
 {
-    auto card = getLocalBounds().withSizeKeepingCentre (320, 160);
-    closeBtn.setBounds (card.removeFromBottom (36).reduced (80, 6));
+    auto r = cardBounds().reduced (16, 14);
+    r.removeFromTop (26 + 18 + 16 + 8);
+    checkBtn.setBounds (r.removeFromTop (22).withSizeKeepingCentre (160, 22));
+    r.removeFromTop (6);
+    status.setBounds (r.removeFromTop (22));
+    r.removeFromTop (4);
+    releasesBtn.setBounds (r.removeFromTop (20).withSizeKeepingCentre (140, 20));
+    closeBtn.setBounds (cardBounds().removeFromBottom (36).reduced (80, 6));
+}
+
+void HKR5AudioProcessorEditor::AboutBox::mouseUp (const juce::MouseEvent& e)
+{
+    if (e.mouseWasClicked() && ! cardBounds().contains (e.getPosition()))
+        setVisible (false);
+}
+
+juce::Rectangle<int> HKR5AudioProcessorEditor::AboutBox::cardBounds() const
+{
+    return getLocalBounds().withSizeKeepingCentre (320, 240);
+}
+
+void HKR5AudioProcessorEditor::AboutBox::applyResult (const juce::String& text, bool hasUpdate)
+{
+    fetching.store (false);
+    status.setText (text, juce::dontSendNotification);
+    releasesBtn.setVisible (hasUpdate);
+}
+
+void HKR5AudioProcessorEditor::AboutBox::checkForUpdate()
+{
+    if (fetching.exchange (true))
+        return;
+    status.setText ("Checking...", juce::dontSendNotification);
+    releasesBtn.setVisible (false);
+    juce::Component::SafePointer<AboutBox> safe (this);
+    std::thread ([safe]
+    {
+        juce::String text;
+        bool hasUpdate = false;
+        juce::URL url ("https://api.github.com/repos/iamtew/5HKR/tags");
+        const auto opts = juce::URL::InputStreamOptions (juce::URL::ParameterHandling::inAddress)
+                              .withExtraHeaders ("User-Agent: 5HKR\nAccept: application/vnd.github+json")
+                              .withConnectionTimeoutMs (8000);
+        if (auto stream = url.createInputStream (opts))
+        {
+            const auto parsed = juce::JSON::parse (stream->readEntireStreamAsString());
+            if (auto* arr = parsed.getArray())
+            {
+                std::vector<std::string> names;
+                names.reserve ((size_t) arr->size());
+                for (const auto& v : *arr)
+                    if (auto* obj = v.getDynamicObject())
+                        names.push_back (obj->getProperty ("name").toString().toStdString());
+                const auto newest = hkr::newestNewerTag (names, JucePlugin_VersionString);
+                if (newest.empty())
+                    text = "You are up to date.";
+                else
+                {
+                    text = "Newer version available: " + juce::String (newest);
+                    hasUpdate = true;
+                }
+            }
+            else
+                text = "Could not reach GitHub.";
+        }
+        else
+            text = "Could not reach GitHub.";
+
+        juce::MessageManager::callAsync ([safe, text, hasUpdate]
+        {
+            if (safe != nullptr)
+                safe->applyResult (text, hasUpdate);
+        });
+    }).detach();
 }
 
 void HKR5AudioProcessorEditor::ScSpec::paint (juce::Graphics& g)

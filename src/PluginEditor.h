@@ -5,6 +5,7 @@
 #include "ui/EqPage.h"
 #include "ui/MixerPage.h"
 
+#include <atomic>
 #include <functional>
 #include <vector>
 
@@ -178,7 +179,19 @@ private:
         AboutBox();
         void paint (juce::Graphics& g) override;
         void resized() override;
+        void mouseUp (const juce::MouseEvent& e) override;
+        void checkForUpdate();
+        void applyResult (const juce::String& text, bool hasUpdate);
+        juce::Rectangle<int> cardBounds() const;
+
+        juce::Label status;
+        juce::ToggleButton checkBtn { "Check for update" };
+        juce::HyperlinkButton releasesBtn {
+            "Open releases",
+            juce::URL ("https://github.com/iamtew/5HKR/releases/latest")
+        };
         juce::ToggleButton closeBtn { "Close" };
+        std::atomic<bool> fetching { false };
     };
 
     // Filtered sidechain key, log Hz. HP/LP lines are markers, not handles.

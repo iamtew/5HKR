@@ -14,7 +14,7 @@ src/
   PluginProcessor.h/.cpp
   PluginEditor.h/.cpp
   dsp/Sequencer.h Voices.h Meter.h FxChain.h EqBiquad.h ParametricEq.h EqAnalyser.h Mixer.h
-  ui/EffectsPage.h EqPage.h MixerPage.h
+  ui/VersionCompare.h EffectsPage.h EqPage.h MixerPage.h
   parameters/ParameterIDs.h ParameterLayout.h Library.h
 justfile
 5HKR.jucer

@@ -6,7 +6,7 @@ Perc groove box. Eight synth lanes, plus one one-shot sample per lane. The groov
 
 **Main / Mixer / Effects / EQ / Sidechain** (title bar) — chevrons or click the name to switch.
 
-Click **5HKR** + version in the top left for About.
+Click **5HKR** + version in the top left for About. **Check for update** looks at GitHub tags; if a newer build exists, **Open releases** opens the download page in your browser.
 
 **Volume** (title bar, right) — master fader and a peak meter (-48 dB to 0 dB, holds the hit). Clip lights if the output hits 0 dBFS.
 

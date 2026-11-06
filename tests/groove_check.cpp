@@ -5,6 +5,7 @@
 #include "dsp/Voices.h"
 #include "parameters/Library.h"
 #include "parameters/ParameterIDs.h"
+#include "ui/VersionCompare.h"
 
 #include <cassert>
 #include <cmath>
@@ -485,6 +486,10 @@ int main()
             acc += std::fabs (s.process (1.f));
         assert (acc < 1e-4f);
     }
+
+    std::vector<std::string> tags { "0.0.2", "v0.0.1" };
+    assert (hkr::newestNewerTag (tags, "0.0.1") == "0.0.2");
+    assert (hkr::newestNewerTag (tags, "0.0.2").empty());
 
     std::puts ("groove_check ok");
     return 0;
