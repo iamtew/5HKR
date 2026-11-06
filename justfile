@@ -21,12 +21,14 @@ resave:
     # OneDrive can lag the sln behind "Finished saving".
     $n=0; while (-not (Test-Path '{{SOLUTION}}') -and $n -lt 20) { Start-Sleep -Milliseconds 250; $n++ }
 
-# Meat Bag's assets/logo.png is the only art. Never write that file.
-# PNG → Builds/.../icon.ico, docs/logo.png, then wipe compiled .res so the next build relinks it.
+# assets/logo.png is the Affinity export. Source of truth. Never write that file.
+# Derived: docs/logo.png (320, linear Lanczos EWA), Builds/.../icon.ico, then wipe .res so the next build relinks it.
 # `just resave` does not refresh icon.ico when the PNG changes.
-icon:
-    magick assets/logo.png -define icon:auto-resize=256,128,64,48,32,16 Builds\VisualStudio2022\icon.ico
-    Copy-Item assets/logo.png docs/logo.png -Force
+docs-logo:
+    magick assets/logo.png -background none -colorspace RGB -filter Lanczos +distort Resize 320x320 -colorspace sRGB PNG32:docs/logo.png
+
+icon: docs-logo
+    magick assets/logo.png -background none -colorspace RGB -filter Lanczos -define icon:auto-resize=256,128,64,48,32,16 Builds\VisualStudio2022\icon.ico
     Get-ChildItem Builds\VisualStudio2022 -Recurse -Filter resources.res | Remove-Item -Force
 
 build-debug: resave

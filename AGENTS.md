@@ -19,6 +19,9 @@ src/
 justfile
 5HKR.jucer
 
+## Art
+- `assets/logo.png` is the Affinity export. Source of truth. Never overwrite. `just icon` / `just docs-logo` derive the rest.
+
 ## Version
 - Jucer `version=` is what the binary and About dialog show.
 - `just build-dist` names the zips and MSI from the jucer version.
