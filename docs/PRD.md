@@ -2,7 +2,7 @@
 
 ## Vision
 
-A perc groove box: eight tiny analog-ish synth lanes on a 16th grid, with banks you can key-lock like TEW03. A lane can play one loaded one-shot instead of its synth.
+A percussion overlay: eight tiny analog-ish synth lanes on a 16th grid, with banks you can key-lock like TEW03. A lane can play one loaded one-shot instead of its synth.
 
 ## MVP
 

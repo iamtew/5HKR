@@ -1,6 +1,6 @@
 # 5HKR – Cursor Rules
 
-Percussion groove box: 8 synth lanes, step sequencer, pattern banks, sidechain duck.
+Percussion overlay: 8 synth lanes, step sequencer, pattern banks, sidechain duck.
 A lane can play one loaded one-shot instead of its synth. Not a sample library.
 
 ## Stack

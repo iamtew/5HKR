@@ -1,6 +1,6 @@
 # 5HKR manual
 
-Perc groove box. Eight synth lanes, plus one one-shot sample per lane. The groove runs while a mapped MIDI key is held.
+Percussion overlay. Eight synth lanes, plus one one-shot sample per lane. The overlay runs while a mapped MIDI key is held.
 
 ## Pages
 
