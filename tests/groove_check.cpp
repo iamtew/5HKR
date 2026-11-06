@@ -500,6 +500,9 @@ int main()
         assert (fxCompGrDb (-20.f, -12.f, 4.f, 0.f) == 0.f);
         assert (fxCompGrDb (-6.f, -12.f, 1.f, 0.f) == 0.f);
         assert (fxCompGrDb (-6.f, -12.f, 4.f, 0.f) > 4.f);
+        assert (fxCompGrDb (-6.f, -24.f, 1.f, 0.f) == 0.f);
+        assert (fxCompGrDb (-6.f, -24.f, 4.f, 0.f) > 10.f);
+        assert (fxCompGrDb (-30.f, -24.f, 4.f, 0.f) == 0.f);
         const float knee = fxCompGrDb (-12.f, -12.f, 4.f, 6.f);
         assert (knee > 0.f && knee < 2.f);
 
