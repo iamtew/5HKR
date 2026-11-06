@@ -6,7 +6,7 @@
 
 36 factory grooves: bank 1 house/techno, bank 2 latin/afro, bank 3 broken/polyrhythmic. Edit them in `factoryPats` in [src/dsp/Sequencer.h](src/dsp/Sequencer.h).
 
-VST3 and standalone. Stupid Systems LLC. [MIT](LICENSE). Docs: [iamtew.github.io/5HKR](https://iamtew.github.io/5HKR/).
+VST3 and standalone. Stupid Audio. [MIT](LICENSE). Docs: [iamtew.github.io/5HKR](https://iamtew.github.io/5HKR/).
 
 ## Release
 
@@ -22,7 +22,7 @@ The `dist` artifact holds:
 - `5HKR-<version>-mac-universal-vst3.zip`
 - `5HKR-<version>-mac-universal-standalone.zip`
 
-The MSI installs the VST3, the standalone app, or both. Defaults are `Common Files\VST3` and `Program Files\Stupid Systems LLC\5HKR`; each folder can be changed. The standalone install adds a Start menu shortcut.
+The MSI installs the VST3, the standalone app, or both. Defaults are `Common Files\VST3` and `Program Files\Stupid Audio\5HKR`; each folder can be changed. The standalone install adds a Start menu shortcut.
 
 The Mac zips are ad-hoc signed, not notarized. Gatekeeper blocks them until you right-click Open, or run `xattr -dr com.apple.quarantine` on the `.vst3` and the `.app`. The Linux build uses the system ALSA, FreeType, fontconfig, and X11 libraries.
 

@@ -21,9 +21,12 @@ constexpr const char* kBankExt = ".5hkrb";
 
 juce::File libraryRoot()
 {
-    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-        .getChildFile ("Stupid Systems LLC")
-        .getChildFile ("5HKR");
+    const auto appData = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory);
+    auto neu = appData.getChildFile ("Stupid Audio").getChildFile ("5HKR");
+    const auto old = appData.getChildFile ("Stupid Systems LLC").getChildFile ("5HKR");
+    if (! neu.isDirectory() && old.isDirectory())
+        old.copyDirectoryTo (neu);
+    return neu;
 }
 
 juce::File ensureDir (juce::File dir)

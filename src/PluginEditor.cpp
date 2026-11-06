@@ -595,7 +595,7 @@ void HKR5AudioProcessorEditor::AboutBox::paint (juce::Graphics& g)
                 juce::Justification::centred);
     g.setFont (boldFont (13.f));
     g.setColour (kCyan);
-    g.drawText ("Stupid Systems LLC", r.removeFromTop (18).toNearestInt(),
+    g.drawText ("Stupid Audio", r.removeFromTop (18).toNearestInt(),
                 juce::Justification::centred);
     g.setColour (kWhite.withAlpha (0.8f));
     g.drawText ("Hold C1 for bank 1 pattern 1.", r.removeFromTop (16).toNearestInt(),

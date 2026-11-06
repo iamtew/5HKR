@@ -51,8 +51,8 @@ Hold C1 for bank 1 pattern 1 (Ableton C0). C2 is bank 2 pattern 1. Mapping start
 
 **Init Patch** / **Init Bank** in the title bar: chevrons step the list; click for Init / Save / Save As / Export / Import.
 
-- Patches (`.5hkrp`) — knobs. `%AppData%\Stupid Systems LLC\5HKR\Patches`
-- Banks (`.5hkrb`) — patterns. `%AppData%\Stupid Systems LLC\5HKR\Banks`
+- Patches (`.5hkrp`) — knobs. `%AppData%\Stupid Audio\5HKR\Patches`
+- Banks (`.5hkrb`) — patterns. `%AppData%\Stupid Audio\5HKR\Banks`
 
 ## Sidechain
 
