@@ -139,7 +139,7 @@ main.landing {
 
 .hero-panel,
 .feature {
-  background: rgba(26, 35, 50, 0.8);
+  background: rgba(26, 35, 50, 0.6);
   border: 2px solid var(--magenta);
   border-radius: 1.6rem;
   backdrop-filter: blur(12px);
