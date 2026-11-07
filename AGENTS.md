@@ -1,5 +1,7 @@
 # 5HKR – Cursor Rules
 
+Spec: [docs/SPEC.md](docs/SPEC.md).
+
 Percussion overlay: 8 synth lanes, step sequencer, pattern banks, sidechain duck.
 A lane can play one loaded one-shot instead of its synth. Not a sample library.
 
