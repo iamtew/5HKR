@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>5HKR | percussion overlay</title>
-  <meta name="description" content="percussion overlay">
+  <title>5HKR</title>
+  <meta name="description" content="A free percussion overlay: eight synth lanes, pattern banks, a mixer, FX, EQ, and a sidechain duck. Hold a MIDI key and it grooves over the track. VST3 and standalone.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="5HKR | percussion overlay">
-  <meta property="og:description" content="percussion overlay">
+  <meta property="og:title" content="5HKR">
+  <meta property="og:description" content="A free percussion overlay: eight synth lanes, pattern banks, a mixer, FX, EQ, and a sidechain duck. Hold a MIDI key and it grooves over the track. VST3 and standalone.">
   <meta property="og:url" content="https://iamtew.github.io/5HKR/">
   <meta property="og:image" content="https://iamtew.github.io/5HKR/ogimage-5HKR.png">
   <meta property="og:image:width" content="1200">
@@ -21,98 +21,170 @@
   <canvas id="fx" aria-hidden="true"></canvas>
   <header>
     <a class="brand" href="#top"><img src="logo.png" alt="" width="36" height="36">5HKR</a>
-    <nav>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+      <svg class="icon" aria-hidden="true"><use href="icons.svg#menu"></use></svg>
+    </button>
+    <nav id="site-nav">
       <a href="#main">Main</a>
       <a href="#mixer">Mixer</a>
       <a href="#effects">Effects</a>
       <a href="#eq">EQ</a>
       <a href="#sidechain">Sidechain</a>
-      <a href="notes.html?doc=MANUAL.md">Manual</a>
-      <a href="#notes">Notes</a>
+      <a href="docs.html">Manual</a>
       <a href="https://audio.stupid.systems/">Stupid Audio</a>
     </nav>
   </header>
 
-  <main id="top">
-    <div class="lead">
-      <img class="hero" src="logo.png" alt="5HKR" width="160" height="160">
-      <div>
-        <h1>5HKR</h1>
-        <p class="tag">Shaker. Percussion overlay.</p>
+  <main id="top" class="landing">
+    <div class="hero-panel">
+      <div class="lead">
+        <img class="hero" src="logo.png" alt="5HKR" width="160" height="160">
+        <div>
+          <h1>5HKR</h1>
+          <p class="tag">Shaker. Percussion overlay.</p>
+        </div>
       </div>
+      <p>Hold a MIDI key and 5HKR sits on top of whatever you are playing: eight analog-ish lanes on a sixteenth grid, banks you can key-lock, per-lane swing and FX send, a mixer, delay / reverb / chorus / flanger / phaser, post EQ, and a sidechain duck. Drop a one-shot on a lane if you want, but this is not a sample library.</p>
+      <p>It is part of <a href="https://audio.stupid.systems/">Stupid Audio</a> — five free instruments in one pack. The other four live over there.</p>
+      <div class="demos">
+        <p class="demo">
+          <a href="5HKR-DEMO1.mp3">5HKR-DEMO1.mp3</a>
+          <audio controls preload="metadata">
+            <source src="5HKR-DEMO1.mp3" type="audio/mpeg">
+            Your browser cannot play this demo.
+          </audio>
+        </p>
+      </div>
+      <p class="actions">
+        <button type="button" class="download" data-dl-open>
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#download"></use></svg>
+          Download
+        </button>
+        <a class="repo" href="https://github.com/iamtew/5HKR">
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#github"></use></svg>
+          GitHub
+        </a>
+      </p>
+      <p class="meta">VST3 and standalone. Hold C1 (Ableton C0) for bank 1 pattern 1, same trick as TEW03.</p>
     </div>
-    <p>Eight synth lanes on a 16th-note grid, pattern banks, per-lane swing and FX send, delay / reverb / chorus / flanger / phaser, post EQ, and a sidechain duck. Also plays samples.</p>
-    <p>Part of <a href="https://audio.stupid.systems/">Stupid Audio</a> — five free instruments in one pack. The other four live over there.</p>
-    <p class="demo">
-      <a href="5HKR-DEMO1.mp3">5HKR-DEMO1.mp3</a>
-      <audio controls preload="metadata">
-        <source src="5HKR-DEMO1.mp3" type="audio/mpeg">
-        Your browser cannot play this demo.
-      </audio>
-    </p>
-    <p class="actions">
-      <a class="download" href="https://github.com/iamtew/5HKR/releases/latest">Download</a>
-      <a href="https://github.com/iamtew/5HKR">GitHub</a>
-    </p>
-    <p class="meta">VST3 and standalone. Hold C1 for bank 1 pattern 1 (Ableton C0), like TEW03.</p>
 
-    <section id="main" class="card">
-      <h2>Main</h2>
-      <p>CHH, OHH, Crash, Cym, Shaker, Clave, Cow, Rim. M / S on the right mute and solo (same as the mixer). The kit menu picks 707 / 808 / 909 / Linn / Sample for that lane. Drop a wav, aiff, flac, or ogg on a lane to load it. Click a cell off → ghost → on (cyan) → accent (magenta). Shift-click flam / ratchet. Right-click sets that lane’s loop end. Tune, swing, FX send, and probability per lane. Bank / Pat, length 1 / 2 / 4 bars, Copy / Paste / Fill / Random / Clear. Ctrl+Z undoes the last grid edit. Hold Fill or MIDI C3 for pattern 12.</p>
-      <figure>
+    <section id="main" class="feature">
+      <div>
+        <h2>Main</h2>
+        <p>Eight lanes: hats, crash, cymbal, shaker, clave, cowbell, rim. Pick 707, 808, 909, or Linn per lane, or drop a wav / aiff / flac / ogg and that lane becomes Sample. Click a cell through off, ghost, on (cyan), accent (magenta). Shift-click for flam or ratchet. Right-click pins the loop end.</p>
+        <p>Each lane gets tune, swing, FX send, and probability. Banks and patterns live here, plus copy / paste / fill / random / clear. Hold Fill (or MIDI C3) for the bank's fill without leaving the pattern you picked.</p>
+      </div>
+      <button type="button" class="shot-open" data-shot="main.png" data-shot-alt="5HKR main page: eight lanes and step grid">
         <img class="shot" src="main.png" alt="5HKR main page: eight lanes and step grid">
-        <figcaption>Main — lanes, grid, bank / pattern / length.</figcaption>
-      </figure>
+      </button>
     </section>
 
-    <section id="mixer" class="card">
-      <h2>Mixer</h2>
-      <p>One strip per lane. Gain is trim. High / Mid / Low is a 3-band EQ. Filter is a DJ filter (left high-pass, centre off, right low-pass). Pan is constant-power. Mute and solo match Main. The fader is channel level; the thin bar behind it is the lane meter.</p>
-      <figure>
+    <section id="mixer" class="feature">
+      <div>
+        <h2>Mixer</h2>
+        <p>One strip per lane: trim, a little 3-band EQ, a DJ filter (left high-pass, centre off, right low-pass), pan, mute, solo, and a fader with a thin meter behind it. Mute and solo match Main, so you will not argue with yourself.</p>
+      </div>
+      <button type="button" class="shot-open" data-shot="mixer.png" data-shot-alt="5HKR mixer page: eight lane strips">
         <img class="shot" src="mixer.png" alt="5HKR mixer page: eight lane strips">
-        <figcaption>Mixer — trim, 3-band EQ, DJ filter, pan, mute, solo, fader.</figcaption>
-      </figure>
+      </button>
     </section>
 
-    <section id="effects" class="card">
-      <h2>Effects</h2>
-      <p>Click a name to select it, On to add it. Grip-drag to reorder. Chorus, Delay, Flanger, Phaser, Reverb, Compressor, Distortion, Equalizer, Filter. Lane FX must be up or the chain is silent.</p>
-      <figure>
+    <section id="effects" class="feature">
+      <div>
+        <h2>Effects</h2>
+        <p>Click a name in the left rail, hit On, and it joins the send. Drag the grip to reorder. Chorus, delay, flanger, phaser, reverb, compressor, distortion, equalizer, filter. Turn a lane's FX send up or the chain has nothing to chew on.</p>
+      </div>
+      <button type="button" class="shot-open" data-shot="effects.png" data-shot-alt="5HKR effects page: chorus, delay, flanger, phaser, reverb">
         <img class="shot" src="effects.png" alt="5HKR effects page: chorus, delay, flanger, phaser, reverb">
-        <figcaption>Effects — click a name in the left rail to add it.</figcaption>
-      </figure>
+      </button>
     </section>
 
-    <section id="eq" class="card">
-      <h2>EQ</h2>
-      <p>Post-effects 5-band EQ. Toggle EQ, drag nodes for frequency and gain, scroll for Q. The inspector sits on the left.</p>
-      <figure>
+    <section id="eq" class="feature">
+      <div>
+        <h2>EQ</h2>
+        <p>Five bands after the effects. Toggle it, drag nodes for frequency and gain, scroll for Q. Inspector on the left if you like numbers more than dragging.</p>
+      </div>
+      <button type="button" class="shot-open" data-shot="eq.png" data-shot-alt="5HKR five-band EQ page">
         <img class="shot" src="eq.png" alt="5HKR five-band EQ page">
-        <figcaption>EQ — five bands after the effects chain.</figcaption>
-      </figure>
+      </button>
     </section>
 
-    <section id="sidechain" class="card">
-      <h2>Sidechain</h2>
-      <p>Ducks the lanes from the plugin audio input. Off until you turn it on. HP / LP pick the key, Listen previews it. Thresh, Amount, Attack, Release, Mix. The plot under the knobs is that filtered key. Title bar chevrons cycle the pages. Click <strong>5HKR</strong> for About.</p>
-      <figure>
-        <img class="shot" src="sidechain.png" alt="5HKR sidechain page">
-        <figcaption>Sidechain — duck from the audio input.</figcaption>
-      </figure>
-      <figure>
-        <img class="shot" src="about.png" alt="5HKR about dialog">
-        <figcaption>About — version and MIDI hint.</figcaption>
-      </figure>
-    </section>
-
-    <section id="notes">
-      <h2>Notes</h2>
-      <a href="notes.html?doc=MANUAL.md">Manual</a>
-      <a href="notes.html?doc=SPEC.md">Spec</a>
-      <a href="notes.html?doc=ARCHITECTURE.md">Architecture</a>
-      <a href="notes.html?doc=DSP_NOTES.md">DSP notes</a>
+    <section id="sidechain" class="feature">
+      <div>
+        <h2>Sidechain</h2>
+        <p>Ducks the lanes from the plugin audio input. Off until you turn it on, so it will not surprise you. HP / LP pick what the ducker listens to; Listen puts that key on the output so you can hear it. Then thresh, amount, attack, release, mix. The plot under the knobs is that filtered key.</p>
+        <p>Title-bar chevrons flip pages. Click <strong>5HKR</strong> in the corner for About.</p>
+      </div>
+      <div>
+        <button type="button" class="shot-open" data-shot="sidechain.png" data-shot-alt="5HKR sidechain page">
+          <img class="shot" src="sidechain.png" alt="5HKR sidechain page">
+        </button>
+        <button type="button" class="shot-open" data-shot="about.png" data-shot-alt="5HKR about dialog">
+          <img class="shot" src="about.png" alt="5HKR about dialog">
+        </button>
+      </div>
     </section>
   </main>
+
+  <dialog id="dl" class="dl-dialog" aria-labelledby="dl-title">
+    <button type="button" class="dl-close" data-dl-close aria-label="Close">
+      <svg class="icon" aria-hidden="true"><use href="icons.svg#close"></use></svg>
+    </button>
+    <h2 id="dl-title">Download 5HKR</h2>
+    <div class="dl-kind">
+      <p>The Windows installer is the easy path. It can put the VST3, the standalone app, or both on the machine, and it adds a Start menu shortcut for the app.</p>
+      <div class="dl-row" data-kind="installer" hidden>
+        <a class="download os" data-os="win" hidden>
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#windows"></use></svg>
+          Windows installer
+        </a>
+      </div>
+    </div>
+    <div class="dl-kind">
+      <p>The VST3 zip is just the plugin. Drop it where your DAW looks for VST3s. Mac builds are ad-hoc signed, so Gatekeeper will sulk until you right-click Open the first time.</p>
+      <div class="dl-row" data-kind="vst3" hidden>
+        <a class="download os" data-os="win" hidden>
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#windows"></use></svg>
+          Windows
+        </a>
+        <a class="download os" data-os="linux" hidden>
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#linux"></use></svg>
+          Linux
+        </a>
+        <a class="download os" data-os="mac" hidden>
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#apple"></use></svg>
+          macOS
+        </a>
+      </div>
+    </div>
+    <div class="dl-kind">
+      <p>The standalone zip is the app, no DAW required. Same Gatekeeper story on Mac. Linux wants the usual system ALSA, FreeType, fontconfig, and X11 libraries.</p>
+      <div class="dl-row" data-kind="standalone" hidden>
+        <a class="download os" data-os="win" hidden>
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#windows"></use></svg>
+          Windows
+        </a>
+        <a class="download os" data-os="linux" hidden>
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#linux"></use></svg>
+          Linux
+        </a>
+        <a class="download os" data-os="mac" hidden>
+          <svg class="icon" aria-hidden="true"><use href="icons.svg#apple"></use></svg>
+          macOS
+        </a>
+      </div>
+    </div>
+    <img class="dl-logo" src="logo.png" alt="" width="192" height="192">
+  </dialog>
+
+  <dialog id="shot" class="shot-dialog">
+    <button type="button" class="dl-close" data-shot-close aria-label="Close">
+      <svg class="icon" aria-hidden="true"><use href="icons.svg#close"></use></svg>
+    </button>
+    <img id="shot-full" alt="">
+  </dialog>
+
+  <script src="icons.js"></script>
   <script type="module" src="fx.js"></script>
   <script src="site.js"></script>
 </body>

@@ -226,6 +226,8 @@ h1 { font-size: 2.4rem; }
   cursor: zoom-in;
 }
 
+.shot-open + .shot-open { margin-top: 0.8rem; }
+
 .shot {
   display: block;
   width: 100%;

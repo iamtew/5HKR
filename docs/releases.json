@@ -1,0 +1,12 @@
+{
+  "tag": "0.0.4",
+  "files": [
+    "5HKR-0.0.4-linux-x64-standalone.zip",
+    "5HKR-0.0.4-linux-x64-vst3.zip",
+    "5HKR-0.0.4-mac-universal-standalone.zip",
+    "5HKR-0.0.4-mac-universal-vst3.zip",
+    "5HKR-0.0.4-win-x64-installer.msi",
+    "5HKR-0.0.4-win-x64-standalone.zip",
+    "5HKR-0.0.4-win-x64-vst3.zip"
+  ]
+}
