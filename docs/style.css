@@ -49,6 +49,14 @@ a:hover { color: var(--magenta); }
   pointer-events: none;
 }
 
+/* Filled Tux. The stroke rule above would erase it. */
+.icon.tux {
+  width: 1.45rem;
+  height: 1.45rem;
+  fill: currentColor;
+  stroke: none;
+}
+
 header {
   position: sticky;
   top: 0;
