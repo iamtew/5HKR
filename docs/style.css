@@ -35,6 +35,10 @@ body {
   z-index: 0;
 }
 
+/* ?fx preview: the canvas is the whole page. */
+body.fx-only { overflow: hidden; cursor: none; }
+body.fx-only > :not(#fx) { display: none; }
+
 a { color: var(--cyan); }
 a:hover { color: var(--magenta); }
 

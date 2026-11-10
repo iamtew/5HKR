@@ -8,6 +8,9 @@
 
 VST3 and standalone. Stupid Audio. [MIT](LICENSE). Docs: [iamtew.github.io/5HKR](https://iamtew.github.io/5HKR/).
 
+Add `?fx` to any page to preview the backdrop full screen with the page chrome
+hidden; `?fx=false` keeps the normal page.
+
 ## Release
 
 Windows, Linux, and macOS files come from GitHub Actions (`.github/workflows/dist.yml`). Run it from the Actions tab for artifacts only, or push a numeric tag such as `0.0.1` (no `v` prefix) to build and publish a GitHub Release with the files attached. `<version>` is the `version` in `5HKR.jucer`.
