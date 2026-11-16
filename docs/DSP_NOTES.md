@@ -8,7 +8,7 @@
 - Accent peaks are normalised to about 0.8 at default knobs (saturated lanes sit a little hotter). Ghost is quieter (~0.35) with less snap; on is 0.65. CHH trigger chokes OHH (synth env and sample).
 - Tune is a per-lane semitone ratio on oscillators and the SVF together.
 - Swing delays odd 16ths: 0.5 = straight, 0.75 = half a step late. Per-lane Prob is percent chance a step (and its flam/ratchet) fires. Flam is a quieter hit ~1/6 step later; ratchet ×2 / ×4 subdivides the step.
-- Per-lane loop wraps that lane against the pattern length (clave-in-5 against 16, etc.).
+- Per-lane loop wraps that lane on the 16th clock (`g % loop`); it does not reset at pattern length while the overlay is held.
 - Ducker: one-pole HP then LP on the input, envelope follower on that abs, gain `1 / (1 + amount * over * 12)` above thresh. Attack / release in ms. Listen replaces the output with the filtered key. Duck runs after FX + post EQ. Sidechain page FFT is that same filtered key.
 - Lane mixer (before send split): trim dB, low-shelf 250 / peak 1k / high-shelf 4k, bipolar DJ filter, fader 0–1, constant-power pan, solo mask. Mute is still sequencer `laneOn`. Lane meters are post-fader peak, held ~400 ms, drawn -48..0 dBFS. Optional extra outs (buses 1–8) are that same post-strip stereo, no master Volume / FX / post EQ / duck.
 - Master meter is max(|L|, |R|) after FX, post EQ, duck and Volume, same hold and scale. Clip is a sample at 0 dBFS.

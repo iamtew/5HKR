@@ -460,30 +460,30 @@ struct Sequencer
 
         const double start = phase;
         const double end = phase + (double) nSamples;
-        const double loopSamps = (double) len * sps;
         int nHits = 0;
 
         auto push = [&] (double t, int lane, int vel)
         {
-            for (int k = -1; k <= 1; ++k)
-            {
-                const double tt = t + (double) k * loopSamps;
-                if (tt < start || tt >= end)
-                    continue;
-                if (nHits >= maxHits)
-                    return false;
-                hits[nHits++] = { (int) (tt - start), lane, vel };
-            }
+            if (t < start || t >= end)
+                return true;
+            if (nHits >= maxHits)
+                return false;
+            hits[nHits++] = { (int) (t - start), lane, vel };
             return true;
         };
 
-        for (int st = 0; st < len; ++st)
+        // Swing + ratchet x4 can land 1.25 steps after g. Do not wrap g at len:
+        // short loops keep cycling while the overlay is held.
+        const int g0 = std::max (0, (int) std::floor (start / sps - 2.0));
+        const int g1 = (int) std::floor (end / sps) + 2;
+
+        for (int g = g0; g <= g1; ++g)
         {
             for (int lane = 0; lane < numLanes; ++lane)
             {
                 if ((enabled & (uint8_t) (1u << lane)) == 0)
                     continue;
-                const int ls = laneStep (st, std::min (len, std::max (1, (int) slot.loop[lane])));
+                const int ls = laneStep (g, std::min (len, std::max (1, (int) slot.loop[lane])));
                 const int v = getStep (slot, lane, ls);
                 if (v == 0)
                     continue;
@@ -497,7 +497,7 @@ struct Sequencer
                         continue;
                 }
 
-                double t = (double) st * sps;
+                double t = (double) g * sps;
                 if ((ls & 1) != 0)
                     t += swingOffset (swing[lane], sps);
 
@@ -530,10 +530,8 @@ struct Sequencer
             }
         }
 
-        phase = std::fmod (end, loopSamps);
-        if (phase < 0.0)
-            phase += loopSamps;
-        head = std::min (len - 1, (int) (phase / sps));
+        phase = end;
+        head = (int) (phase / sps);
         return nHits;
     }
 

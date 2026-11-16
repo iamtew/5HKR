@@ -195,6 +195,24 @@ int main()
         assert (nSkip == 0);
     }
 
+    {
+        SlotData poly;
+        poly.len = 16;
+        poly.loop[clave] = 5;
+        setStep (poly, clave, 1, 2);
+        Sequencer sq;
+        sq.prepare (44100.0);
+        const int bar = (int) std::llround (16.0 * sps);
+        sq.advance (poly, bar, 120.f, true, swing, prob, 0xff, hits, 128);
+        const int nPoly = sq.advance (poly, stepSamples, 120.f, true, swing, prob, 0xff, hits, 128);
+        int claveHits = 0;
+        for (int i = 0; i < nPoly; ++i)
+            if (hits[i].lane == clave)
+                ++claveHits;
+        assert (claveHits == 1);
+        assert (laneStep (sq.playhead(), 5) == 1 || laneStep (sq.playhead(), 5) == 2);
+    }
+
     // Factory grids are 16 steps of . x X, and no two slots share a groove.
     {
         constexpr int nSlots = Sequencer::numBanks * Sequencer::patternsPerBank;

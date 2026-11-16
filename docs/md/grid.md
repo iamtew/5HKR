@@ -10,7 +10,7 @@ The kit menu under the name picks **707 / 808 / 909 / Linn / Sample** for that l
 
 Click a cell: off → ghost (dim cyan) → on (cyan) → accent (magenta). On, ghost, and accent also preview the lane, so you can hear what you just committed.
 
-Shift-click a cell to cycle flam (the little dot) / ratchet ×2 / ratchet ×4. Empty cells stay empty. Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length.
+Shift-click a cell to cycle flam (the little dot) / ratchet ×2 / ratchet ×4. Empty cells stay empty. Right-click a cell to set that lane’s loop end (magenta outline). Click the same end again to restore full length. A short loop keeps cycling while the key is held; it does not reset at the 1 / 2 / 4 bar pattern length.
 
 Right-click a lane name for Copy lane, Paste lane, Random lane, or Euclidean. Euclidean fills the loop; an empty lane uses half the steps, which is usually enough mischief.
 
