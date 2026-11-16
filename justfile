@@ -38,9 +38,9 @@ icon: docs-logo
 build-debug: resave
     & '{{MSBUILD}}' {{SOLUTION}} /p:Configuration=Debug /p:Platform=x64 /m
 
-# Overwrites the installed VST3 (same path as the MSI). Close the DAW first. Needs an elevated shell.
+# Overwrites the installed VST3 (same path as the MSI). Close the DAW first. UAC for Common Files.
 install-debug: build-debug
-    Write-Host 'Overwrites Common Files\VST3\5HKR.vst3 (the installed plugin). Close the DAW first.'; $src = 'Builds\VisualStudio2022\x64\Debug\VST3\5HKR.vst3'; $dest = Join-Path $env:ProgramFiles 'Common Files\VST3\5HKR.vst3'; if (-not (Test-Path $src)) { throw "install-debug: missing $src" }; if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }; Copy-Item $src $dest -Recurse; Write-Host "installed $dest"
+    Write-Host 'Overwrites Common Files\VST3\5HKR.vst3 (the installed plugin). Close the DAW first.'; $src = (Resolve-Path -LiteralPath 'Builds\VisualStudio2022\x64\Debug\VST3\5HKR.vst3').Path; $dest = Join-Path $env:ProgramFiles 'Common Files\VST3\5HKR.vst3'; $copy = "`$ErrorActionPreference='Stop'; if (Test-Path -LiteralPath '$dest') { Remove-Item -LiteralPath '$dest' -Recurse -Force }; Copy-Item -LiteralPath '$src' -Destination '$dest' -Recurse"; $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator); if ($admin) { Invoke-Expression $copy } else { $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($copy)); $p = Start-Process -FilePath powershell.exe -Verb RunAs -Wait -PassThru -ArgumentList @('-NoProfile','-EncodedCommand',$enc); if ($null -eq $p -or $p.ExitCode -ne 0) { throw 'install-debug: elevated copy failed' } }; Write-Host "installed $dest"
 
 build-release: resave
     & '{{MSBUILD}}' {{SOLUTION}} /p:Configuration=Release /p:Platform=x64 /m
