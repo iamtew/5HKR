@@ -38,6 +38,10 @@ icon: docs-logo
 build-debug: resave
     & '{{MSBUILD}}' {{SOLUTION}} /p:Configuration=Debug /p:Platform=x64 /m
 
+# Overwrites the installed VST3 (same path as the MSI). Close the DAW first. Needs an elevated shell.
+install-debug: build-debug
+    Write-Host 'Overwrites Common Files\VST3\5HKR.vst3 (the installed plugin). Close the DAW first.'; $src = 'Builds\VisualStudio2022\x64\Debug\VST3\5HKR.vst3'; $dest = Join-Path $env:ProgramFiles 'Common Files\VST3\5HKR.vst3'; if (-not (Test-Path $src)) { throw "install-debug: missing $src" }; if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }; Copy-Item $src $dest -Recurse; Write-Host "installed $dest"
+
 build-release: resave
     & '{{MSBUILD}}' {{SOLUTION}} /p:Configuration=Release /p:Platform=x64 /m
 
